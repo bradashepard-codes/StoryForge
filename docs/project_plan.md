@@ -82,7 +82,7 @@ This design prioritizes **evaluation rigor, reliability, and scope discipline** 
 
 ---
 
-### Structured Output Contract (Explicit)
+### Structured Output Contract 
 
 All generated outputs must conform to the following schema:
 
@@ -163,7 +163,7 @@ The improved system must demonstrate:
 - better identification of ambiguity
 - improved Definition-of-Ready compliance
 
-### Rubric (Explicit Scoring)
+### Rubric 
 
 | Dimension | 1 (Poor) | 3 (Moderate) | 5 (Strong) |
 |----------|----------|--------------|------------|
@@ -229,14 +229,14 @@ The improved prompt is expected to:
      - incorrect assumptions
    - Must be captured in evaluation
 
-## 7. Risks and Governance (Sharpened)
+## 7. Risks and Governance 
 
 ### Key Risks
 - hallucinated acceptance criteria
 - false confidence on incomplete inputs
 - structurally correct but logically flawed outputs
 
-### Trust Boundaries (Explicit)
+### Trust Boundaries 
 
 The system should **not** be trusted when:
 - user persona is missing
