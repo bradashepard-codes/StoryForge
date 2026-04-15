@@ -152,7 +152,7 @@ User flow:
    - revise
    - escalate
 
-## 5. Evaluation Plan (Enhanced)
+## 5. Evaluation Plan
 
 ### Success Criteria
 
