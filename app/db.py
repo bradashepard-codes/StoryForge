@@ -120,6 +120,17 @@ def create_feature(project_id: str, name: str, description: str, user_id: str) -
     return response.data[0] if response.data else {}
 
 
+def update_feature(feature_id: str, updates: dict) -> dict:
+    response = (
+        get_client()
+        .table("features")
+        .update(updates)
+        .eq("id", feature_id)
+        .execute()
+    )
+    return response.data[0] if response.data else {}
+
+
 def delete_feature(feature_id: str):
     get_client().table("features").delete().eq("id", feature_id).execute()
 
