@@ -26,7 +26,8 @@ def render_feature():
 
     if stories:
         for story in stories:
-            with st.expander(f"Story — {story['created_at'][:10]}", expanded=False):
+            label = story.get("user_story", "")[:80] or f"Story — {story['created_at'][:10]}"
+            with st.expander(label, expanded=False):
                 st.markdown(f"**User Story**\n\n{story['user_story']}")
 
                 ac = story.get("acceptance_criteria") or []
@@ -76,7 +77,7 @@ def render_feature():
     st.divider()
     st.markdown("#### Generate New User Story")
 
-    with st.form("generate_story_form"):
+    with st.form("generate_story_form", clear_on_submit=True):
         feature_title = st.text_input("Feature Title", value=feature_name)
         feature_description = st.text_area("Feature Description", height=100)
         business_objective = st.text_input("Business Objective")
