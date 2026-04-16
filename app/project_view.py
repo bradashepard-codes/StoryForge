@@ -8,14 +8,11 @@ def render_project():
     project_id = st.session_state["project_id"]
     project_name = st.session_state.get("project_name", "Project")
 
-    col_back, col_title = st.columns([1, 8])
-    with col_back:
-        if st.button("← Back", use_container_width=True):
-            st.session_state["view"] = "dashboard"
-            st.rerun()
-    with col_title:
-        st.title(project_name)
-        st.subheader("Features")
+    if st.button("← Back", key="back_to_dashboard"):
+        st.session_state["view"] = "dashboard"
+        st.rerun()
+    st.title(project_name)
+    st.subheader("Features")
 
     features = list_features(project_id)
 

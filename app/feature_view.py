@@ -12,15 +12,12 @@ def render_feature():
     feature_name = st.session_state.get("feature_name", "Feature")
     project_name = st.session_state.get("project_name", "Project")
 
-    col_back, col_title = st.columns([1, 8])
-    with col_back:
-        if st.button("← Back", use_container_width=True):
-            st.session_state["view"] = "project"
-            st.rerun()
-    with col_title:
-        st.title(feature_name)
-        st.caption(f"Project: {project_name}")
-        st.subheader("User Stories")
+    if st.button("← Back", key="back_to_project"):
+        st.session_state["view"] = "project"
+        st.rerun()
+    st.title(feature_name)
+    st.caption(f"Project: {project_name}")
+    st.subheader("User Stories")
 
     stories = list_stories(feature_id)
 
