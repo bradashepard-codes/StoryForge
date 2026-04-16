@@ -12,15 +12,13 @@ The application will accept a **single feature description** and generate a **De
 - missing information / ambiguity flags
 - a confidence and escalation signal
 
-The system will use **Claude via API** and will explicitly compare:
-1. a **baseline prompt-only version**
-2. an **improved context-engineered version**
+The system will use **Claude via API** to generate a context-engineered user story package and will be evaluated against a **human manual baseline** — the process a Functional Lead would follow without AI assistance.
 
 This project is intentionally designed to prioritize:
 - narrow workflow fit
 - structured outputs
 - human review
-- evaluation against a simpler baseline
+- evaluation against the manual process it replaces
 
 ---
 
@@ -34,7 +32,7 @@ This application is intended to improve the quality, speed, and consistency of t
 
 ## 3. Core Technical Scope Statement
 
-A Streamlit app that converts a single feature description into a Definition-of-Ready user story package with structured acceptance criteria, using Claude via API, and compares a baseline prompt against a context-engineered version.
+A Streamlit app that converts a single feature description into a Definition-of-Ready user story package with structured acceptance criteria, using Claude via API. The system is evaluated by comparing its outputs against a human manual baseline to measure time savings, consistency gains, and improvement in DoR compliance.
 
 ---
 
@@ -58,9 +56,8 @@ The following capabilities are explicitly in scope for this project:
   - Definition of Ready assessment
   - missing information / assumptions
   - escalation or confidence flag
-- Side-by-side or selectable comparison of:
-  - baseline prompt output
-  - context-engineered prompt output
+- Single structured output panel displaying the context-engineered story package
+- Clear display of DoR status, missing information, and escalation signals
 
 ### 4.3 Technical Design Elements
 - Python-based application
@@ -68,7 +65,7 @@ The following capabilities are explicitly in scope for this project:
 - Anthropic API integration
 - JSON or schema-like structured response handling
 - Local test dataset for evaluation
-- Baseline vs improved prompt comparison
+- Human baseline vs StoryForge output comparison in evaluation layer
 - Evaluation support module or script
 
 ### 4.4 Governance Controls
@@ -137,17 +134,15 @@ A delivery-facing business lead responsible for:
 
 ## 7.1 Functional Workflow
 1. Functional Lead enters one feature description into the app
-2. App packages the input into two prompt paths:
-   - baseline prompt
-   - context-engineered prompt
-3. Claude API generates candidate outputs
-4. Application parses and displays the generated story package
-5. User reviews output
+2. App constructs a context-engineered prompt from the input
+3. Claude API generates the structured story package
+4. Application parses and displays the generated output
+5. User reviews the story, acceptance criteria, DoR assessment, and escalation flag
 6. User decides whether the story is:
    - acceptable
    - needs edits
    - should be escalated due to ambiguity
-7. Evaluation module stores or compares output against rubric/test cases
+7. Evaluation module compares StoryForge outputs against human baseline using rubric scoring
 
 ---
 
@@ -181,13 +176,12 @@ A delivery-facing business lead responsible for:
 | 1 | User enters feature details | Streamlit UI | Feature title, description, business objective, assumptions | Text form inputs |
 | 2 | App validates required fields | Python backend | Input strings | Python |
 | 3 | App prepares prompt payloads | Prompt builder module | Input + system prompt + few-shot examples | Python strings / JSON-like structures |
-| 4 | Baseline generation | Anthropic API call | Minimal prompt | Python / API JSON |
-| 5 | Improved generation | Anthropic API call | Context-engineered prompt with constraints and output contract | Python / API JSON |
-| 6 | Parse responses | Output parser | Raw model outputs | Python / JSON |
-| 7 | Render results | Streamlit UI | Parsed story package | UI components |
-| 8 | Log outputs for review | Local files | Inputs, outputs, metadata | JSON / CSV |
-| 9 | Evaluate against test set | Evaluation script | Saved test cases, rubric dimensions | Python |
-| 10 | Compare baseline vs improved | Analysis module | Scored outputs | Python / CSV / markdown tables |
+| 4 | Generate story package | Anthropic API call | Context-engineered prompt with constraints and output contract | Python / API JSON |
+| 5 | Parse response | Output parser | Raw model output | Python / JSON |
+| 6 | Render results | Streamlit UI | Parsed story package | UI components |
+| 7 | Log outputs for review | Local files | Inputs, outputs, metadata | JSON / CSV |
+| 8 | Evaluate against test set | Evaluation script | Saved test cases, rubric dimensions | Python |
+| 9 | Compare human baseline vs StoryForge | Analysis module | Human-authored stories and StoryForge outputs, scored | Python / CSV / markdown tables |
 
 ---
 
@@ -197,8 +191,8 @@ A delivery-facing business lead responsible for:
 Responsible for:
 - collecting feature input
 - triggering generation
-- showing baseline vs improved outputs
-- displaying structured sections cleanly
+- displaying the structured story package cleanly
+- surfacing DoR status, escalation flags, and missing information
 
 ### Expected Inputs
 - Feature name
@@ -210,37 +204,25 @@ Responsible for:
 
 ### Expected UI Sections
 - Feature Input Form
-- Baseline Output
-- Improved Output
+- Generated User Story and Acceptance Criteria
 - DoR Assessment
 - Missing Information / Escalation
-- Evaluation View
 
 ---
 
 ## 9.2 Prompt Builder Layer
-Responsible for constructing two prompt variants.
-
-### Baseline Prompt
-A simple prompt with minimal structure, intended to serve as the comparison benchmark.
-
-Example design intent:
-- basic instruction
-- limited constraints
-- no or minimal output contract
-- no few-shot examples
+Responsible for constructing the context-engineered prompt.
 
 ### Context-Engineered Prompt
-An improved prompt that reflects course concepts.
+The single prompt variant used by the application. Reflects course concepts in context engineering.
 
-Expected design elements:
-- explicit role
+Design elements:
+- explicit role (Business Analyst in specialty insurance)
 - explicit task
-- constraints
-- output contract
+- constraints and output contract
 - Definition of Ready lens
 - few-shot examples
-- escalation instructions for ambiguity
+- escalation instructions for ambiguous inputs
 
 ---
 
@@ -280,8 +262,8 @@ Responsible for:
 
 ## 9.5 Evaluation Layer
 Responsible for:
-- running test cases
-- scoring baseline and improved variants
+- running test cases through StoryForge
+- scoring StoryForge outputs against human baseline using the rubric
 - producing evidence for project write-up
 
 ### Evaluation Dimensions
@@ -293,9 +275,10 @@ Responsible for:
 - output structure compliance
 
 ### Evaluation Data
-- manually created synthetic feature inputs
-- expected behavior notes
-- rubric-based scoring sheets
+- 12 manually created synthetic feature inputs across 4 categories
+- human-authored baseline stories (one per test case, written as a Functional Lead would today)
+- StoryForge-generated outputs for each test case
+- rubric-based scoring sheets comparing both
 
 ---
 
@@ -384,14 +367,10 @@ storyforge/
 The Functional Lead enters a single feature request into the Streamlit interface. This is the only required business input and represents the top of the workflow.
 
 ### Step 2 — Prompt Construction
-The Python backend constructs two prompt versions:
-- a baseline prompt
-- a context-engineered prompt
-
-The improved version includes stronger behavioral controls, formatting, and DoR expectations.
+The Python backend constructs the context-engineered prompt, incorporating role framing, output contract, few-shot examples, and DoR expectations.
 
 ### Step 3 — Claude API Execution
-The system sends both requests to Claude via API. Each request returns a candidate story package.
+The system sends the request to Claude via API and receives a structured story package.
 
 ### Step 4 — Parsing and Structuring
 The application validates and normalizes the returned text into predefined sections so that outputs are operational and comparable.
@@ -428,9 +407,10 @@ The improved version will use:
 
 ### 14.3 Evaluation Design
 The project will compare:
-- baseline prompt
-- improved prompt  
-using a fixed test set and rubric dimensions.
+- human-authored baseline stories (the manual process)
+- StoryForge-generated outputs
+
+Using a fixed 12-case test set and five-dimension rubric to measure improvement in clarity, completeness, testability, DoR compliance, and escalation accuracy.
 
 ### 14.4 Governance and Deployment Controls
 The design includes:
@@ -486,11 +466,11 @@ These failure modes will be explicitly included in evaluation and governance wri
 ## 18. Success Criteria
 
 A successful technical implementation will demonstrate that:
-1. the app runs locally from the repository
-2. a user can submit one feature and receive a structured story package
-3. baseline and improved prompt variants can be compared
-4. the improved version shows measurable gains on the evaluation rubric
-5. the system flags cases where human escalation is appropriate
+1. the app runs locally and is deployed at https://story-forge.streamlit.app/
+2. a user can submit one feature and receive a structured story package in under 30 seconds
+3. StoryForge outputs score measurably higher than human baseline stories on the evaluation rubric
+4. the system correctly flags cases where human escalation is appropriate
+5. time-to-draft is reduced from 30–60 minutes to under 3 minutes per story
 
 ## 19. Future Extensions (Not Part of Current Scope)
 

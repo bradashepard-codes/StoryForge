@@ -1,8 +1,8 @@
 import streamlit as st
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from app.prompts import build_baseline_prompt, build_improved_prompt
-from app.llm_client import call_baseline, call_improved
-from app.parser import parse_output, parse_baseline_output
+from concurrent.futures import ThreadPoolExecutor
+from app.prompts import build_improved_prompt
+from app.llm_client import call_improved
+from app.parser import parse_output
 
 MAX_DESCRIPTION_CHARS = 2000
 MAX_FIELD_CHARS = 500
@@ -96,50 +96,28 @@ def render_ui():
 
         st.markdown("---")
 
-        # --- Parallel API Calls ---
-        baseline_raw = None
-        improved_raw = None
-
+        # --- API Call ---
         with st.spinner("Generating story package..."):
-            baseline_prompt = build_baseline_prompt(feature_input)
             system_prompt, user_message = build_improved_prompt(feature_input)
+            improved_raw = call_improved(system_prompt, user_message)
 
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                future_baseline = executor.submit(call_baseline, baseline_prompt)
-                future_improved = executor.submit(call_improved, system_prompt, user_message)
-                baseline_raw = future_baseline.result()
-                improved_raw = future_improved.result()
-
-        if baseline_raw is None and improved_raw is None:
-            st.error("Both API calls failed. Check your API key and network connection.")
+        if improved_raw is None:
+            st.error("Generation failed. Check your API key and network connection.")
             return
 
-        baseline_text = parse_baseline_output(baseline_raw) if baseline_raw else None
-        improved = parse_output(improved_raw) if improved_raw else None
+        improved = parse_output(improved_raw)
 
-        # --- Baseline vs Improved ---
-        col1, col2 = st.columns(2)
+        # --- Generated Story Package ---
+        if improved:
+            st.markdown("### Generated User Story")
+            st.info(improved.user_story)
 
-        with col1:
-            st.markdown("### Baseline Output")
-            if baseline_text:
-                st.text_area("", value=baseline_text, height=300, disabled=True, label_visibility="collapsed")
-            else:
-                st.error("Baseline generation failed.")
-
-        with col2:
-            st.markdown("### Improved Output")
-            if improved:
-                st.markdown("**User Story**")
-                st.info(improved.user_story)
-                st.markdown("**Acceptance Criteria**")
-                for criterion in improved.acceptance_criteria:
-                    st.markdown(f"- {criterion}")
-            elif improved_raw:
-                st.warning("Could not parse structured output. Raw response:")
-                st.text_area("", value=improved_raw, height=300, disabled=True, label_visibility="collapsed")
-            else:
-                st.error("Improved generation failed.")
+            st.markdown("### Acceptance Criteria")
+            for criterion in improved.acceptance_criteria:
+                st.markdown(f"- {criterion}")
+        else:
+            st.warning("Could not parse structured output. Raw response:")
+            st.text_area("", value=improved_raw, height=300, disabled=True, label_visibility="collapsed")
 
         # --- DoR Assessment ---
         st.markdown("---")
@@ -151,12 +129,12 @@ def render_ui():
             color = "green" if dor.is_ready else "red"
             st.markdown(f"**Status:** :{color}[{status}]")
 
-            col3, col4 = st.columns(2)
-            with col3:
+            col1, col2 = st.columns(2)
+            with col1:
                 st.markdown("**Criteria Met**")
                 for c in dor.criteria_met:
                     st.markdown(f"- {c}")
-            with col4:
+            with col2:
                 st.markdown("**Criteria Missing**")
                 if dor.criteria_missing:
                     for c in dor.criteria_missing:
@@ -171,8 +149,8 @@ def render_ui():
         st.markdown("### Missing Information / Escalation")
 
         if improved:
-            col5, col6 = st.columns(2)
-            with col5:
+            col3, col4 = st.columns(2)
+            with col3:
                 st.markdown(f"**Confidence:** {improved.confidence.capitalize()}")
                 if improved.escalation_flag:
                     st.error("Escalation Required — this feature is not ready for sprint entry.")
@@ -186,7 +164,7 @@ def render_ui():
                 else:
                     st.markdown("_None identified._")
 
-            with col6:
+            with col4:
                 st.markdown("**Assumptions Made**")
                 if improved.assumptions:
                     for item in improved.assumptions:

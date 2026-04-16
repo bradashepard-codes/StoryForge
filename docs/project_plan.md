@@ -55,10 +55,8 @@ Templates and forms cannot:
 ### System Design Overview
 A **Streamlit application** that:
 1. accepts a feature description
-2. generates outputs using Claude API
-3. compares:
-   - baseline prompt
-   - context-engineered prompt
+2. generates a structured, Definition-of-Ready user story package using Claude API
+3. surfaces ambiguity, missing information, and escalation signals for human review
 
 ---
 
@@ -82,7 +80,7 @@ This design prioritizes **evaluation rigor, reliability, and scope discipline** 
 
 ---
 
-### Structured Output Contract 
+### Structured Output Contract (Explicit)
 
 All generated outputs must conform to the following schema:
 
@@ -125,24 +123,52 @@ A story is considered **Definition-of-Ready compliant** if it meets the followin
 
 #### Evaluation Design
 - rubric-based scoring system
-- baseline vs improved comparison
+- human baseline vs StoryForge output comparison
 - test set including edge cases
 
-### Baseline
+### Baseline — The Manual Process Today
 
-Baseline prompt:
-> "Write a user story with acceptance criteria for this feature."
+The evaluation baseline is not an AI prompt. It is the **manual process a Functional Lead performs today**, without AI assistance.
 
-This provides a minimal benchmark for comparison.
+#### Day in the Life — Without StoryForge
+
+A Functional Lead managing 20+ concurrent projects receives feature requests throughout the day via email, meetings, and informal conversations. Each request is typically a paragraph of business context — often incomplete.
+
+To convert a single feature into a sprint-ready user story, the Functional Lead must:
+
+1. Re-read the feature request and mentally reconstruct the intent
+2. Identify the persona, business objective, and any implied constraints
+3. Open a story template (if one exists) and begin drafting manually
+4. Write acceptance criteria from scratch — often without a standard format
+5. Review for completeness, revise multiple times, and reconcile with stakeholders if gaps are identified
+6. Repeat this process for every feature across every active project
+
+**Estimated time per story (manual): 30–60 minutes**
+
+This process is:
+- Inconsistent across team members and projects
+- Prone to missing acceptance criteria or untestable conditions
+- Dependent on the individual's domain knowledge and attention
+- A bottleneck when backlogs are large or requirements arrive in bursts
+
+#### Estimated Improvement with StoryForge
+
+| Metric | Manual Baseline | StoryForge |
+|---|---|---|
+| Time to draft one story | 30–60 minutes | 2–3 minutes |
+| Acceptance criteria format | Inconsistent | Standardized Given/When/Then |
+| Ambiguity detection | Dependent on individual | Systematic, every time |
+| DoR compliance check | Manual, often skipped | Automated, every generation |
+| Estimated accuracy improvement | — | ~40–60% reduction in rework |
+
+These estimates are based on the nature of the workflow and the structured output contract enforced by StoryForge. Formal measurement will be captured in the evaluation phase.
 
 ### Application Experience
 
 User flow:
 1. User enters feature details into form
 2. Clicks **Generate**
-3. System displays:
-   - baseline output
-   - improved output
+3. System displays the structured user story package
 4. User reviews:
    - story quality
    - acceptance criteria
@@ -156,14 +182,15 @@ User flow:
 
 ### Success Criteria
 
-The improved system must demonstrate:
+StoryForge must demonstrate measurable improvement over the manual baseline:
 
-- higher average rubric scores than baseline
+- higher average rubric scores than manually produced stories
 - more testable acceptance criteria
 - better identification of ambiguity
 - improved Definition-of-Ready compliance
+- meaningful reduction in time-to-draft
 
-### Rubric 
+### Rubric (Explicit Scoring)
 
 | Dimension | 1 (Poor) | 3 (Moderate) | 5 (Strong) |
 |----------|----------|--------------|------------|
@@ -229,14 +256,14 @@ The improved prompt is expected to:
      - incorrect assumptions
    - Must be captured in evaluation
 
-## 7. Risks and Governance 
+## 7. Risks and Governance (Sharpened)
 
 ### Key Risks
 - hallucinated acceptance criteria
 - false confidence on incomplete inputs
 - structurally correct but logically flawed outputs
 
-### Trust Boundaries 
+### Trust Boundaries (Explicit)
 
 The system should **not** be trusted when:
 - user persona is missing
@@ -272,19 +299,20 @@ All outputs must be reviewed before:
 ## 8. Plan for Week 6 Check-In
 
 ### Application Progress
-- Streamlit app operational
+- Streamlit app operational and live at https://story-forge.streamlit.app/
 - input form complete
 - Claude API integrated
-- baseline and improved prompts implemented
+- context-engineered prompt implemented and tested
 
 ### Evaluation Progress
-- test set created with 10–12 cases
+- test set created with 12 synthetic cases across 4 categories
 - rubric finalized
-- initial scoring completed
+- initial scoring in progress
 
 ### Comparison Progress
-- baseline vs improved results generated
-- early insights documented
+- human baseline stories drafted for test cases
+- StoryForge outputs generated
+- scoring and delta analysis underway
 
 ## 9. Pair Request
 
@@ -295,14 +323,14 @@ The project requires both:
 
 ### Role Division
 
-**Brad Shepard (Technical Lead)**
+**Brad (Technical Lead)**
 - system architecture
 - Streamlit development
 - Claude API integration
 - prompt engineering
 - evaluation execution and analysis
 
-**Jeff Dunlao (Presentation Lead)**
+**Teammate (Presentation Lead)**
 - test case documentation support
 - evaluation write-up support
 - demo design and walkthrough
