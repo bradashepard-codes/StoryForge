@@ -1,5 +1,5 @@
 import streamlit as st
-from app.db import list_projects, create_project, delete_project
+from app.db import list_projects, create_project, delete_project, get_feature_counts, get_story_counts_by_project
 
 STATUS_OPTIONS = ["Active", "On Hold", "Complete", "Cancelled"]
 
@@ -21,14 +21,22 @@ def render_dashboard():
             st.rerun()
 
     projects = list_projects(user_id)
+    feature_counts = get_feature_counts()
+    story_counts = get_story_counts_by_project()
 
     if projects:
         for project in projects:
+            pid = project["id"]
+            feat_count = feature_counts.get(pid, 0)
+            story_count = story_counts.get(pid, 0)
             with st.container(border=True):
                 col_info, col_actions = st.columns([7, 2])
                 with col_info:
                     st.markdown(f"**{project['name']}**")
-                    st.caption(f"Owner: {project['owner']}  |  Status: {project['status']}")
+                    st.caption(
+                        f"Owner: {project['owner']}  |  Status: {project['status']}  |  "
+                        f"Features: {feat_count}  |  Stories: {story_count}"
+                    )
                 with col_actions:
                     if st.button("Open", key=f"open_{project['id']}", use_container_width=True):
                         st.session_state["project_id"] = project["id"]

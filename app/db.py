@@ -72,6 +72,30 @@ def delete_project(project_id: str):
     get_client().table("projects").delete().eq("id", project_id).execute()
 
 
+def get_feature_counts() -> dict:
+    """Returns {project_id: feature_count} for all accessible projects."""
+    response = get_client().table("features").select("project_id").execute()
+    counts: dict = {}
+    for row in (response.data or []):
+        pid = row["project_id"]
+        counts[pid] = counts.get(pid, 0) + 1
+    return counts
+
+
+def get_story_counts_by_project() -> dict:
+    """Returns {project_id: story_count} by joining through features."""
+    feat_response = get_client().table("features").select("id, project_id").execute()
+    feat_to_proj = {r["id"]: r["project_id"] for r in (feat_response.data or [])}
+
+    story_response = get_client().table("user_stories").select("feature_id").execute()
+    counts: dict = {}
+    for row in (story_response.data or []):
+        pid = feat_to_proj.get(row["feature_id"])
+        if pid:
+            counts[pid] = counts.get(pid, 0) + 1
+    return counts
+
+
 # --- Features ---
 
 def list_features(project_id: str) -> list:
