@@ -1,1 +1,53 @@
-# Output parsing and validation
+import json
+from pydantic import BaseModel, field_validator
+from typing import List
+
+
+class DefinitionOfReady(BaseModel):
+    is_ready: bool
+    criteria_met: List[str]
+    criteria_missing: List[str]
+
+
+class StoryPackage(BaseModel):
+    user_story: str
+    acceptance_criteria: List[str]
+    definition_of_ready: DefinitionOfReady
+    missing_information: List[str]
+    assumptions: List[str]
+    confidence: str
+    escalation_flag: bool
+
+    @field_validator("confidence")
+    @classmethod
+    def confidence_must_be_valid(cls, v):
+        if v not in ("low", "medium", "high"):
+            raise ValueError("confidence must be low, medium, or high")
+        return v
+
+
+def parse_output(raw: str) -> StoryPackage | None:
+    """
+    Parse raw model output into a validated StoryPackage.
+    Returns None if the output cannot be parsed or validated.
+    """
+    try:
+        # Strip markdown code fences if present
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+
+        data = json.loads(text.strip())
+        return StoryPackage(**data)
+
+    except (json.JSONDecodeError, ValueError, KeyError):
+        return None
+
+
+def parse_baseline_output(raw: str) -> str:
+    """
+    Baseline output is unstructured text — return as-is for display.
+    """
+    return raw.strip()
