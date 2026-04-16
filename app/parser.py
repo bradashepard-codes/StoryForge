@@ -1,6 +1,11 @@
 import json
+import logging
+import os
 from pydantic import BaseModel, field_validator
 from typing import List
+
+LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "parse_errors.log")
+logging.basicConfig(filename=LOG_PATH, level=logging.ERROR, format="%(asctime)s %(message)s")
 
 
 class DefinitionOfReady(BaseModel):
@@ -42,7 +47,8 @@ def parse_output(raw: str) -> StoryPackage | None:
         data = json.loads(text.strip())
         return StoryPackage(**data)
 
-    except (json.JSONDecodeError, ValueError, KeyError):
+    except (json.JSONDecodeError, ValueError, KeyError) as e:
+        logging.error(f"Parse failed: {e}\nRaw output:\n{raw}")
         return None
 
 
