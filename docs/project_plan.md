@@ -295,14 +295,14 @@ The project requires both:
 
 ### Role Division
 
-**Brad (Technical Lead)**
+**Brad Shepard (Technical Lead)**
 - system architecture
 - Streamlit development
 - Claude API integration
 - prompt engineering
 - evaluation execution and analysis
 
-**Teammate (Presentation Lead)**
+**Jeff Dunlao (Presentation Lead)**
 - test case documentation support
 - evaluation write-up support
 - demo design and walkthrough
