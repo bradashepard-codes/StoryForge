@@ -90,7 +90,7 @@ def render_feature():
             st.error("Feature description, business objective, and intended user are required.")
         else:
             feature_input = {
-                "feature_title": feature_title,
+                "feature_name": feature_title,
                 "feature_description": feature_description,
                 "business_objective": business_objective,
                 "intended_user": intended_user,
