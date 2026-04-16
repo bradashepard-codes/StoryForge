@@ -2,6 +2,8 @@
 
 **Definition-of-Ready User Story Generator for Specialty Insurance Functional Leads**
 
+🚀 **Live App:** [https://story-forge.streamlit.app/](https://story-forge.streamlit.app/)
+
 ---
 
 ## Overview
@@ -45,40 +47,39 @@ All outputs conform to a fixed JSON schema. Outputs that do not match the schema
 | Layer | Technology |
 |---|---|
 | UI | Streamlit |
-| Language | Python |
-| LLM Provider | Anthropic Claude API |
+| Language | Python 3.14 |
+| LLM Provider | Anthropic Claude API (`claude-sonnet-4-6`) |
 | Environment | `.env` / `python-dotenv` |
 | Validation | Pydantic |
 | Evaluation | Pandas, local scripts |
 | Version Control | GitHub |
+| Deployment | Streamlit Cloud |
 
 ---
 
 ## Repository Structure
 
 ```text
-storyforge/
+StoryForge/
 ├── app/
-│   ├── main.py
-│   ├── ui.py
-│   ├── prompts.py
-│   ├── llm_client.py
-│   ├── parser.py
-│   └── dor_checker.py
+│   ├── main.py           ← entry point
+│   ├── ui.py             ← Streamlit UI and form logic
+│   ├── prompts.py        ← baseline and context-engineered prompts
+│   ├── llm_client.py     ← Anthropic API integration
+│   ├── parser.py         ← output parsing and Pydantic validation
+│   └── dor_checker.py    ← DoR assessment logic
 ├── eval/
-│   ├── run_eval.py
-│   ├── rubric.py
-│   ├── compare_results.py
-│   └── test_cases.json
-├── outputs/
-│   ├── baseline_results.json
-│   ├── improved_results.json
-│   └── eval_scores.csv
+│   ├── run_eval.py       ← evaluation runner (parallelized)
+│   ├── rubric.py         ← rubric definitions and scoring
+│   ├── compare_results.py← baseline vs improved comparison
+│   └── test_cases.json   ← 12 synthetic test cases
+├── outputs/              ← generated results and eval scores
 ├── docs/
 │   ├── project_plan.md
 │   ├── technical_design.md
 │   └── evaluation_notes.md
 ├── .env.example
+├── .python-version
 ├── requirements.txt
 ├── README.md
 └── streamlit_app.py
@@ -89,7 +90,7 @@ storyforge/
 ## Getting Started
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.10+
 - An Anthropic API key
 
 ### Setup
@@ -97,7 +98,7 @@ storyforge/
 ```bash
 git clone https://github.com/bradashepard-codes/StoryForge.git
 cd StoryForge
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 cp .env.example .env
 # Add your Anthropic API key to .env
 ```
@@ -105,7 +106,7 @@ cp .env.example .env
 ### Run the App
 
 ```bash
-streamlit run streamlit_app.py
+python3 -m streamlit run streamlit_app.py
 ```
 
 ---
@@ -114,9 +115,12 @@ streamlit run streamlit_app.py
 
 1. Enter a feature description into the input form
 2. Click **Generate**
-3. Review the baseline and improved outputs side by side
-4. Assess the DoR status, missing information, and escalation flag
-5. Accept, revise, or escalate as needed
+3. Both baseline and improved outputs are generated in parallel
+4. Review the outputs side by side:
+   - Baseline — unstructured, minimal prompt response
+   - Improved — structured user story, acceptance criteria, DoR assessment
+5. Assess the DoR status, missing information, and escalation flag
+6. Accept, revise, or escalate as needed
 
 **Human review is required before any output is treated as sprint-ready.**
 
@@ -124,7 +128,7 @@ streamlit run streamlit_app.py
 
 ## Evaluation
 
-StoryForge includes a local evaluation harness that scores both prompt variants against a synthetic test set of 12–20 feature inputs using a five-dimension rubric:
+StoryForge includes a local evaluation harness that scores both prompt variants against a synthetic test set of 12 feature inputs across four categories — standard, ambiguous, incomplete, and edge cases — using a five-dimension rubric:
 
 | Dimension | What It Measures |
 |---|---|
@@ -134,11 +138,31 @@ StoryForge includes a local evaluation harness that scores both prompt variants 
 | DoR Compliance | Meets Definition of Ready criteria |
 | Escalation Accuracy | Correctly flags ambiguous inputs |
 
+Scoring: 1 (Poor) / 3 (Moderate) / 5 (Strong) per dimension.
+
 Run evaluation:
 
 ```bash
-python eval/run_eval.py
+python3 eval/run_eval.py
 ```
+
+Compare results after manual scoring:
+
+```bash
+python3 eval/compare_results.py
+```
+
+---
+
+## Branching Strategy
+
+```
+main                    ← stable, auto-deploys to Streamlit Cloud
+└── dev                 ← integration branch
+    └── docs/evaluation-notes  ← Jeff's documentation lane
+```
+
+All work flows through `dev` before merging to `main`.
 
 ---
 
