@@ -8,11 +8,9 @@
 
 StoryForge is a narrowly scoped Generative AI application that converts a single feature description into a sprint-ready user story package. It is designed for Functional Leads in specialty insurance who manage large portfolios and need to rapidly translate ambiguous business requirements into structured, delivery-ready backlog items.
 
-The application compares two prompt approaches side by side:
-- a **baseline prompt** (minimal instruction)
-- a **context-engineered prompt** (role framing, output contract, few-shot examples, escalation logic)
+What would otherwise take a Functional Lead 30–60 minutes of manual drafting, iteration, and stakeholder reconciliation takes StoryForge under 3 minutes — with consistent structure, testable criteria, and explicit ambiguity detection every time.
 
-This comparison is the core evaluation mechanism of the project.
+The system is evaluated by comparing its outputs against a human manual baseline to demonstrate measurable improvement in quality, consistency, and Definition-of-Ready compliance.
 
 ---
 
@@ -114,7 +112,7 @@ streamlit run streamlit_app.py
 
 1. Enter a feature description into the input form
 2. Click **Generate**
-3. Review the baseline and improved outputs side by side
+3. Review the structured user story and acceptance criteria
 4. Assess the DoR status, missing information, and escalation flag
 5. Accept, revise, or escalate as needed
 
@@ -124,7 +122,7 @@ streamlit run streamlit_app.py
 
 ## Evaluation
 
-StoryForge includes a local evaluation harness that scores both prompt variants against a synthetic test set of 12–20 feature inputs using a five-dimension rubric:
+StoryForge includes a local evaluation harness that scores StoryForge outputs against a human manual baseline across a synthetic test set of 12 feature inputs using a five-dimension rubric:
 
 | Dimension | What It Measures |
 |---|---|
