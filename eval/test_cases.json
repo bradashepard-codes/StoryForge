@@ -1,0 +1,206 @@
+[
+  {
+    "id": "TC001",
+    "category": "standard",
+    "feature_input": {
+      "feature_name": "Broker Policy Change Submission",
+      "feature_description": "Allow brokers to submit policy changes online through a self-service portal.",
+      "business_objective": "Reduce manual processing time for policy amendments and eliminate paper-based submissions.",
+      "intended_user": "Broker",
+      "business_rules": "Changes must be submitted before the policy renewal date. Only active policies are eligible.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Sufficient information for a complete story. Should produce testable criteria."
+    }
+  },
+  {
+    "id": "TC002",
+    "category": "standard",
+    "feature_input": {
+      "feature_name": "Real-Time Underwriting Validation",
+      "feature_description": "Add real-time validation of underwriting rules during policy submission to flag risks before binding.",
+      "business_objective": "Reduce post-bind errors and rework by catching underwriting exceptions at submission.",
+      "intended_user": "Underwriter",
+      "business_rules": "Validation rules are defined in the underwriting guidelines. Flagged submissions must be reviewed before binding.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Well-defined workflow. Should produce complete DoR-ready story."
+    }
+  },
+  {
+    "id": "TC003",
+    "category": "standard",
+    "feature_input": {
+      "feature_name": "Claims Tracking Dashboard",
+      "feature_description": "Create a dashboard for claims adjusters to track open claims, status updates, and pending actions.",
+      "business_objective": "Improve claims adjuster visibility into workload and reduce time spent on status calls.",
+      "intended_user": "Claims Adjuster",
+      "business_rules": "Dashboard must only show claims assigned to the logged-in adjuster.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Clear persona and objective. Should generate testable dashboard criteria."
+    }
+  },
+  {
+    "id": "TC004",
+    "category": "standard",
+    "feature_input": {
+      "feature_name": "Overdue Premium Alert",
+      "feature_description": "Send automated alerts to policyholders when a premium payment is overdue.",
+      "business_objective": "Reduce lapsed policies due to missed payments by proactively notifying policyholders.",
+      "intended_user": "Policyholder",
+      "business_rules": "Alerts triggered at 7, 14, and 30 days past due. Email and SMS channels.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "high",
+      "notes": "Specific trigger rules and channels defined. Should produce high-confidence output."
+    }
+  },
+  {
+    "id": "TC005",
+    "category": "standard",
+    "feature_input": {
+      "feature_name": "Document Upload in Submission Flow",
+      "feature_description": "Enable agents to upload supporting documents as part of the policy submission workflow.",
+      "business_objective": "Digitize the document submission process and eliminate fax and email attachments.",
+      "intended_user": "Agent",
+      "business_rules": "Accepted formats: PDF, DOCX, PNG. Maximum file size: 10MB per document.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "high",
+      "notes": "Concrete constraints provided. Should produce specific, testable criteria."
+    }
+  },
+  {
+    "id": "TC006",
+    "category": "ambiguous",
+    "feature_input": {
+      "feature_name": "Improve Reporting",
+      "feature_description": "Improve reporting.",
+      "business_objective": "",
+      "intended_user": "",
+      "business_rules": "",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "Critically vague. No persona, no objective, no constraints. Must trigger escalation."
+    }
+  },
+  {
+    "id": "TC007",
+    "category": "ambiguous",
+    "feature_input": {
+      "feature_name": "Make the System Faster",
+      "feature_description": "The system needs to be faster for users.",
+      "business_objective": "Better performance.",
+      "intended_user": "",
+      "business_rules": "",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "No measurable success criteria, no persona. Should flag as not DoR-ready."
+    }
+  },
+  {
+    "id": "TC008",
+    "category": "ambiguous",
+    "feature_input": {
+      "feature_name": "Add a New Report",
+      "feature_description": "Add a report for the finance team.",
+      "business_objective": "Finance needs better data.",
+      "intended_user": "Finance Team",
+      "business_rules": "",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "No data fields, no format, no filters specified. Should identify missing information."
+    }
+  },
+  {
+    "id": "TC009",
+    "category": "incomplete",
+    "feature_input": {
+      "feature_name": "Premium Audit Workflow",
+      "feature_description": "Support the premium audit process by allowing auditors to review and adjust final premiums after policy expiration.",
+      "business_objective": "Ensure accurate final premium collection and reduce audit cycle time.",
+      "intended_user": "Auditor",
+      "business_rules": "",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Good persona and objective but missing business rules. Should identify gaps without full escalation."
+    }
+  },
+  {
+    "id": "TC010",
+    "category": "incomplete",
+    "feature_input": {
+      "feature_name": "Renewal Notification Email",
+      "feature_description": "Send a renewal notification email to policyholders before their policy expires.",
+      "business_objective": "Improve renewal rates by giving policyholders advance notice.",
+      "intended_user": "Policyholder",
+      "business_rules": "",
+      "assumptions": "Timing of notification is not yet defined."
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Missing timing rule is a gap but not a blocker. Should note it in missing_information."
+    }
+  },
+  {
+    "id": "TC011",
+    "category": "incomplete",
+    "feature_input": {
+      "feature_name": "Underwriter Risk Score Display",
+      "feature_description": "Display a risk score to underwriters during the policy review process.",
+      "business_objective": "Help underwriters make faster, more consistent decisions.",
+      "intended_user": "Underwriter",
+      "business_rules": "",
+      "assumptions": "Risk scoring model is managed by a separate team and not yet finalized."
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "Dependency on unfinished external model is an unresolved dependency. Should trigger escalation."
+    }
+  },
+  {
+    "id": "TC012",
+    "category": "edge",
+    "feature_input": {
+      "feature_name": "Multi-Line Policy Submission",
+      "feature_description": "Allow brokers to submit policies that span multiple lines of business in a single submission.",
+      "business_objective": "Reduce the number of separate submissions required for complex accounts.",
+      "intended_user": "Broker",
+      "business_rules": "Each line of business has its own underwriting rules. Combined submissions must pass validation for all lines before binding.",
+      "assumptions": "Lines of business in scope are: GL, Property, and Excess. Others are deferred."
+    },
+    "expected_behavior": {
+      "escalation_flag": false,
+      "minimum_confidence": "medium",
+      "notes": "Complex but well-scoped. Should produce multi-part acceptance criteria."
+    }
+  }
+]
