@@ -1,7 +1,11 @@
 import streamlit as st
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.prompts import build_baseline_prompt, build_improved_prompt
 from app.llm_client import call_baseline, call_improved
 from app.parser import parse_output, parse_baseline_output
+
+MAX_DESCRIPTION_CHARS = 2000
+MAX_FIELD_CHARS = 500
 
 
 def render_ui():
@@ -23,13 +27,15 @@ def render_ui():
         feature_description = st.text_area(
             "Feature Description *",
             placeholder="Describe the feature in as much detail as you have.",
-            height=120
+            height=120,
+            help=f"Maximum {MAX_DESCRIPTION_CHARS} characters."
         )
 
         business_objective = st.text_area(
             "Business Objective *",
             placeholder="What business problem does this feature solve?",
-            height=80
+            height=80,
+            help=f"Maximum {MAX_FIELD_CHARS} characters."
         )
 
         intended_user = st.text_input(
@@ -40,22 +46,43 @@ def render_ui():
         business_rules = st.text_area(
             "Business Rules or Constraints",
             placeholder="Any known rules, constraints, or dependencies (optional).",
-            height=80
+            height=80,
+            help=f"Maximum {MAX_FIELD_CHARS} characters."
         )
 
         assumptions = st.text_area(
             "Notes or Assumptions",
             placeholder="Any assumptions or additional context (optional).",
-            height=80
+            height=80,
+            help=f"Maximum {MAX_FIELD_CHARS} characters."
         )
 
         submitted = st.form_submit_button("Generate", use_container_width=True)
 
-    # --- Output Sections ---
+    # --- Validation ---
     if submitted:
-        required_fields = [feature_name, feature_description, business_objective, intended_user]
-        if not all(required_fields):
-            st.error("Please complete all required fields marked with *")
+        errors = []
+
+        if not feature_name:
+            errors.append("Feature Name is required.")
+        if not feature_description:
+            errors.append("Feature Description is required.")
+        elif len(feature_description) > MAX_DESCRIPTION_CHARS:
+            errors.append(f"Feature Description exceeds {MAX_DESCRIPTION_CHARS} characters.")
+        if not business_objective:
+            errors.append("Business Objective is required.")
+        elif len(business_objective) > MAX_FIELD_CHARS:
+            errors.append(f"Business Objective exceeds {MAX_FIELD_CHARS} characters.")
+        if not intended_user:
+            errors.append("Intended End User is required.")
+        if business_rules and len(business_rules) > MAX_FIELD_CHARS:
+            errors.append(f"Business Rules exceeds {MAX_FIELD_CHARS} characters.")
+        if assumptions and len(assumptions) > MAX_FIELD_CHARS:
+            errors.append(f"Notes / Assumptions exceeds {MAX_FIELD_CHARS} characters.")
+
+        if errors:
+            for e in errors:
+                st.error(e)
             return
 
         feature_input = {
@@ -69,20 +96,36 @@ def render_ui():
 
         st.markdown("---")
 
-        with st.spinner("Generating story package..."):
-            baseline_raw = call_baseline(build_baseline_prompt(feature_input))
-            system_prompt, user_message = build_improved_prompt(feature_input)
-            improved_raw = call_improved(system_prompt, user_message)
+        # --- Parallel API Calls ---
+        baseline_raw = None
+        improved_raw = None
 
-        baseline_text = parse_baseline_output(baseline_raw)
-        improved = parse_output(improved_raw)
+        with st.spinner("Generating story package..."):
+            baseline_prompt = build_baseline_prompt(feature_input)
+            system_prompt, user_message = build_improved_prompt(feature_input)
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                future_baseline = executor.submit(call_baseline, baseline_prompt)
+                future_improved = executor.submit(call_improved, system_prompt, user_message)
+                baseline_raw = future_baseline.result()
+                improved_raw = future_improved.result()
+
+        if baseline_raw is None and improved_raw is None:
+            st.error("Both API calls failed. Check your API key and network connection.")
+            return
+
+        baseline_text = parse_baseline_output(baseline_raw) if baseline_raw else None
+        improved = parse_output(improved_raw) if improved_raw else None
 
         # --- Baseline vs Improved ---
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("### Baseline Output")
-            st.text_area("", value=baseline_text, height=300, disabled=True, label_visibility="collapsed")
+            if baseline_text:
+                st.text_area("", value=baseline_text, height=300, disabled=True, label_visibility="collapsed")
+            else:
+                st.error("Baseline generation failed.")
 
         with col2:
             st.markdown("### Improved Output")
@@ -92,9 +135,11 @@ def render_ui():
                 st.markdown("**Acceptance Criteria**")
                 for criterion in improved.acceptance_criteria:
                     st.markdown(f"- {criterion}")
-            else:
+            elif improved_raw:
                 st.warning("Could not parse structured output. Raw response:")
                 st.text_area("", value=improved_raw, height=300, disabled=True, label_visibility="collapsed")
+            else:
+                st.error("Improved generation failed.")
 
         # --- DoR Assessment ---
         st.markdown("---")
