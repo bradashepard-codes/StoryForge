@@ -3,8 +3,9 @@ from app.db import list_features, create_feature, update_feature, delete_feature
 from app.llm_client import enhance_feature_description
 
 
-def _render_enhance_controls(description: str, enhanced_key: str, original_key: str, choice_key: str):
+def _render_enhance_controls(description: str | None, enhanced_key: str, original_key: str, choice_key: str):
     """Shared enhance/clear controls and side-by-side comparison. Returns the chosen description."""
+    description = description or ""
     enhanced = st.session_state.get(enhanced_key)
 
     col_enhance, col_clear = st.columns([2, 1])
@@ -140,7 +141,7 @@ def render_project():
             st.error("Feature name is required.")
         else:
             is_enhanced = st.session_state.get("desc_choice") == "Enhanced"
-            create_feature(project_id, name, final_description, user_id, is_enhanced=is_enhanced)
+            create_feature(project_id, name, final_description or "", user_id, is_enhanced=is_enhanced)
             st.session_state.pop("enhanced_description", None)
             st.session_state.pop("original_description", None)
             st.rerun()
