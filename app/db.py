@@ -170,6 +170,7 @@ def list_stories(feature_id: str) -> list:
 def save_story(feature_id: str, story_package: dict, user_id: str) -> dict:
     payload = {
         "feature_id": feature_id,
+        "title": story_package.get("title", ""),
         "user_story": story_package.get("user_story", ""),
         "acceptance_criteria": story_package.get("acceptance_criteria", []),
         "definition_of_ready": story_package.get("definition_of_ready"),

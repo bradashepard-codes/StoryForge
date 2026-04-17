@@ -59,7 +59,7 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
         st.caption("Deselect any stories you don't want to save, then click Save Selected.")
 
         for i, story in enumerate(fanout_stories):
-            label = story.get("user_story", "")[:80] or f"Story {i + 1}"
+            label = story.get("title") or f"Story {i + 1}"
             with st.container(border=True):
                 keep = st.checkbox(f"Include Story {i + 1}", value=st.session_state.get(f"fanout_sel_{i}", True), key=f"fanout_sel_{i}")
                 if keep:
@@ -130,7 +130,7 @@ def render_feature():
 
     if stories:
         for story in stories:
-            label = story.get("user_story", "")[:80] or f"Story — {story['created_at'][:10]}"
+            label = story.get("title") or story.get("user_story", "")[:80] or f"Story — {story['created_at'][:10]}"
             with st.expander(label, expanded=False):
                 st.markdown(f"**User Story**\n\n{story['user_story']}")
 

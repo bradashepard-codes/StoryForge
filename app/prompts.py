@@ -15,6 +15,7 @@ def build_improved_prompt(feature_input: dict) -> str:
 Your task is to convert a feature description into a Definition-of-Ready (DoR) user story package for a Functional Lead.
 
 Rules:
+- Write a concise title: 4–7 words, no punctuation, suitable as a card name in a sprint board (e.g. "Broker Policy Change Submission").
 - Write the user story in the format: As a [persona], I want [goal], so that [business value].
 - Write acceptance criteria in Given/When/Then format. Each criterion must be specific and testable.
 - Assess the Definition of Ready using the six criteria below.
@@ -42,6 +43,7 @@ Input:
 
 Output:
 {
+  "title": "Broker Online Policy Change Submission",
   "user_story": "As a Broker, I want to submit policy change requests through an online portal, so that I can reduce processing time and avoid manual paperwork.",
   "acceptance_criteria": [
     "Given a broker is logged in, when they navigate to the policy change screen, then they can select an active policy to amend.",
@@ -59,7 +61,19 @@ Output:
   "escalation_flag": false
 }
 
-Now process the following input and return only valid JSON matching this exact schema. Do not include any text outside the JSON."""
+Now process the following input and return only valid JSON matching this exact schema. Do not include any text outside the JSON.
+
+Schema:
+{
+  "title": string (4–7 words, sprint board card name),
+  "user_story": string,
+  "acceptance_criteria": [string],
+  "definition_of_ready": { "is_ready": boolean, "criteria_met": [string], "criteria_missing": [string] },
+  "missing_information": [string],
+  "assumptions": [string],
+  "confidence": "low" | "medium" | "high",
+  "escalation_flag": boolean
+}"""
 
     user_message = f"""Feature: {feature_input['feature_name']}
 Description: {feature_input['feature_description']}
@@ -82,6 +96,7 @@ Rules:
 - Decompose the feature into 3–7 stories. Each story must be independently deliverable and testable.
 - Scope each story as small as possible — one discrete behaviour or capability per story.
 - Do not pad with trivial stories. Do not merge stories that address different behaviours.
+- Write a concise title for each story: 4–7 words, no punctuation, suitable as a card name in a sprint board (e.g. "Broker Policy Change Submission").
 - Write each user story in the format: As a [persona], I want [goal], so that [business value].
 - Write acceptance criteria in Given/When/Then format. Each criterion must be specific and testable.
 - Assess the Definition of Ready for each story using the six criteria below.
@@ -102,6 +117,7 @@ Return only a valid JSON array of story objects. Do not include any text outside
 
 Each object must match this exact schema:
 {
+  "title": string (4–7 words, sprint board card name),
   "user_story": string,
   "acceptance_criteria": [string],
   "definition_of_ready": {

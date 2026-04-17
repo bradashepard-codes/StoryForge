@@ -15,6 +15,7 @@ class DefinitionOfReady(BaseModel):
 
 
 class StoryPackage(BaseModel):
+    title: str
     user_story: str
     acceptance_criteria: List[str]
     definition_of_ready: DefinitionOfReady
