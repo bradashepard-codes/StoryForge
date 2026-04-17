@@ -30,14 +30,33 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
             st.session_state.setdefault("fanout_notes", suggestions.get("notes", ""))
             st.rerun()
 
-        with st.form("fanout_context_form"):
-            business_objective = st.text_input("Business Objective *", key="fanout_biz_obj")
-            intended_user = st.text_input("Intended End User *", key="fanout_intended_user")
-            business_rules = st.text_area("Business Rules or Constraints (optional)", height=70, key="fanout_biz_rules")
-            notes = st.text_area("Additional Notes (optional)", height=50, key="fanout_notes")
-            generate = st.form_submit_button("🚀 Generate All Stories", use_container_width=True, type="primary")
+        st.markdown("**Business Objective** *(required)*")
+        st.text_area("", key="fanout_biz_obj", height=80, label_visibility="collapsed")
 
-        if generate:
+        st.markdown("**Intended End User** *(required)*")
+        st.text_input("", key="fanout_intended_user", label_visibility="collapsed")
+
+        st.markdown("**Business Rules or Constraints**")
+        tab_rules_preview, tab_rules_edit = st.tabs(["Preview", "Edit"])
+        with tab_rules_preview:
+            val = st.session_state.get("fanout_biz_rules", "")
+            st.markdown(val) if val else st.caption("No business rules provided.")
+        with tab_rules_edit:
+            st.text_area("", key="fanout_biz_rules", height=120, label_visibility="collapsed")
+
+        st.markdown("**Additional Notes**")
+        tab_notes_preview, tab_notes_edit = st.tabs(["Preview", "Edit"])
+        with tab_notes_preview:
+            val = st.session_state.get("fanout_notes", "")
+            st.markdown(val) if val else st.caption("No additional notes provided.")
+        with tab_notes_edit:
+            st.text_area("", key="fanout_notes", height=80, label_visibility="collapsed")
+
+        if st.button("🚀 Generate All Stories", use_container_width=True, type="primary"):
+            business_objective = st.session_state.get("fanout_biz_obj", "")
+            intended_user = st.session_state.get("fanout_intended_user", "")
+            business_rules = st.session_state.get("fanout_biz_rules", "")
+            notes = st.session_state.get("fanout_notes", "")
             if not business_objective or not intended_user:
                 st.error("Business objective and intended user are required.")
             else:
