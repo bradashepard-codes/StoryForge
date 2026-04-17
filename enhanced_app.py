@@ -11,6 +11,11 @@ from app.feature_view import render_feature
 def main():
     st.set_page_config(page_title="StoryForge", layout="wide")
 
+    if "session" in st.session_state:
+        from app.db import restore_session
+        s = st.session_state["session"]
+        restore_session(s.access_token, s.refresh_token)
+
     if "view" not in st.session_state:
         st.session_state["view"] = "login"
 

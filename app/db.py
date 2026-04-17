@@ -25,6 +25,14 @@ def sign_in(email: str, password: str):
     return get_client().auth.sign_in_with_password({"email": email, "password": password})
 
 
+def restore_session(access_token: str, refresh_token: str):
+    """Re-apply the user's auth token to the Supabase client on each Streamlit rerun."""
+    try:
+        get_client().auth.set_session(access_token, refresh_token)
+    except Exception:
+        pass
+
+
 def sign_out():
     get_client().auth.sign_out()
 
