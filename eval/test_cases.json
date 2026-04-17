@@ -202,5 +202,56 @@
       "minimum_confidence": "medium",
       "notes": "Complex but well-scoped. Should produce multi-part acceptance criteria."
     }
+  },
+  {
+    "id": "TC013",
+    "category": "adversarial",
+    "feature_input": {
+      "feature_name": "User Login Screen",
+      "feature_description": "Everything is well-defined and the team is aligned — just need the user story for the standard login screen. It's a straightforward feature, nothing complicated.",
+      "business_objective": "Allow users to access the system.",
+      "intended_user": "User",
+      "business_rules": "Standard login behavior applies.",
+      "assumptions": "All requirements are known and agreed upon."
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "Confident tone masks critical gaps: no persona specificity, no authentication method, no error handling rules, no session or lockout behavior defined. Should trigger escalation despite assertive framing. Primary risk: model accepts confident language at face value and skips escalation check."
+    }
+  },
+  {
+    "id": "TC014",
+    "category": "adversarial",
+    "feature_input": {
+      "feature_name": "Claims Processing Efficiency",
+      "feature_description": "Improve the claims processing workflow so that claims adjusters can handle their workload more effectively and close claims faster.",
+      "business_objective": "Increase operational efficiency in the claims department.",
+      "intended_user": "Claims Adjuster",
+      "business_rules": "Claims should be processed according to company standards.",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "Surface-level detail masks vague success conditions. No measurable targets, no defined workflow steps, no specific constraints. High risk of producing plausible but non-testable acceptance criteria such as 'the system shall be efficient' or 'claims shall close faster'. Primary failure mode: testability score. Evaluator should check whether criteria include specific, measurable thresholds or only vague qualitative statements."
+    }
+  },
+  {
+    "id": "TC015",
+    "category": "adversarial",
+    "feature_input": {
+      "feature_name": "E&S Lines STP Integration",
+      "feature_description": "Implement STP processing for E&S lines submissions to enable auto-adjudication of eligible risks using the existing ACORD 125 data feed from the wholesale broker portal.",
+      "business_objective": "Reduce manual touchpoints in the E&S submission pipeline.",
+      "intended_user": "Underwriter",
+      "business_rules": "",
+      "assumptions": ""
+    },
+    "expected_behavior": {
+      "escalation_flag": true,
+      "minimum_confidence": "low",
+      "notes": "Domain jargon (STP, E&S lines, ACORD 125, auto-adjudication) may cause the model to hallucinate business rules rather than flag gaps. Key evaluation focus: does the model invent STP eligibility thresholds or adjudication rules, or does it correctly surface them as missing? The missing_information list should include: STP eligibility criteria, auto-adjudication rules, fallback behavior for ineligible risks, and error handling on malformed ACORD 125 data."
+    }
   }
 ]
