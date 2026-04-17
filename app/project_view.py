@@ -6,23 +6,30 @@ from app.llm_client import enhance_feature_description
 def _render_enhance_controls(description: str | None, enhanced_key: str, original_key: str, choice_key: str):
     """Shared enhance/clear controls and side-by-side comparison. Returns the chosen description."""
     description = description or ""
+
+    # Capture button return values first, handle logic after — ensures session state
+    # is read AFTER any updates so the comparison UI renders in the same rerun.
+    clicked_enhance = st.button(
+        "✨ Enhance Description", key=f"btn_enhance_{enhanced_key}",
+        use_container_width=True, disabled=not description,
+    )
+
+    if clicked_enhance:
+        with st.spinner("Enhancing..."):
+            result = enhance_feature_description(description)
+        if result:
+            st.session_state[enhanced_key] = result
+            st.session_state[original_key] = description
+        else:
+            st.error("Enhancement failed. Check your API key.")
+
     enhanced = st.session_state.get(enhanced_key)
 
-    col_enhance, col_clear = st.columns([2, 1])
-    with col_enhance:
-        if st.button("✨ Enhance Description", key=f"btn_enhance_{enhanced_key}",
-                     use_container_width=True, disabled=not description):
-            with st.spinner("Enhancing..."):
-                result = enhance_feature_description(description)
-            if result:
-                st.session_state[enhanced_key] = result
-                st.session_state[original_key] = description
-            else:
-                st.error("Enhancement failed. Check your API key.")
-    with col_clear:
-        if enhanced and st.button("Clear", key=f"btn_clear_{enhanced_key}", use_container_width=True):
+    if enhanced:
+        if st.button("Clear Enhancement", key=f"btn_clear_{enhanced_key}", use_container_width=True):
             st.session_state.pop(enhanced_key, None)
             st.session_state.pop(original_key, None)
+            enhanced = None
 
     if enhanced:
         st.markdown("**Choose a description:**")
