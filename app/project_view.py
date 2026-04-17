@@ -17,14 +17,12 @@ def _render_enhance_controls(description: str | None, enhanced_key: str, origina
             if result:
                 st.session_state[enhanced_key] = result
                 st.session_state[original_key] = description
-                st.rerun()
             else:
                 st.error("Enhancement failed. Check your API key.")
     with col_clear:
         if enhanced and st.button("Clear", key=f"btn_clear_{enhanced_key}", use_container_width=True):
             st.session_state.pop(enhanced_key, None)
             st.session_state.pop(original_key, None)
-            st.rerun()
 
     if enhanced:
         st.markdown("**Choose a description:**")
