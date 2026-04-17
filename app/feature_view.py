@@ -1,7 +1,7 @@
 import streamlit as st
 from app.db import list_stories, save_story, delete_story, get_feature
 from app.prompts import build_improved_prompt, build_fanout_prompt
-from app.llm_client import call_improved, call_fanout
+from app.llm_client import call_improved, call_fanout, suggest_fanout_context
 from app.parser import parse_output, parse_fanout_output
 
 
@@ -16,11 +16,25 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
         st.markdown("#### Generate All Stories")
         st.caption("This feature has an AI-enhanced description. StoryForge can decompose it into a full set of atomic user stories.")
 
+        ctx_key = f"fanout_ctx_{feature_id}"
+        if ctx_key not in st.session_state:
+            with st.spinner("Inferring context from feature description..."):
+                suggestions = suggest_fanout_context(
+                    feature.get("name", ""),
+                    feature.get("description", ""),
+                ) or {}
+            st.session_state[ctx_key] = suggestions
+            st.session_state.setdefault("fanout_biz_obj", suggestions.get("business_objective", ""))
+            st.session_state.setdefault("fanout_intended_user", suggestions.get("intended_user", ""))
+            st.session_state.setdefault("fanout_biz_rules", suggestions.get("business_rules", ""))
+            st.session_state.setdefault("fanout_notes", suggestions.get("notes", ""))
+            st.rerun()
+
         with st.form("fanout_context_form"):
-            business_objective = st.text_input("Business Objective *")
-            intended_user = st.text_input("Intended End User *")
-            business_rules = st.text_area("Business Rules or Constraints (optional)", height=70)
-            notes = st.text_area("Additional Notes (optional)", height=50)
+            business_objective = st.text_input("Business Objective *", key="fanout_biz_obj")
+            intended_user = st.text_input("Intended End User *", key="fanout_intended_user")
+            business_rules = st.text_area("Business Rules or Constraints (optional)", height=70, key="fanout_biz_rules")
+            notes = st.text_area("Additional Notes (optional)", height=50, key="fanout_notes")
             generate = st.form_submit_button("🚀 Generate All Stories", use_container_width=True, type="primary")
 
         if generate:
@@ -118,7 +132,7 @@ def render_feature():
 
     if st.button("← Back", key="back_to_project"):
         st.session_state["view"] = "project"
-        for key in [k for k in st.session_state if k.startswith("fanout_")]:
+        for key in [k for k in list(st.session_state.keys()) if k.startswith("fanout_")]:
             st.session_state.pop(key)
         st.rerun()
 

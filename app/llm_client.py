@@ -62,6 +62,39 @@ def enhance_feature_description(description: str) -> str | None:
         return None
 
 
+def suggest_fanout_context(feature_name: str, feature_description: str) -> dict | None:
+    """Infer business objective, intended user, business rules, and notes from a feature description."""
+    import json as _json
+    try:
+        client = _get_client()
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=512,
+            temperature=0.3,
+            system=(
+                "You are an expert Business Analyst specializing in specialty insurance delivery workflows. "
+                "Given a feature name and description, infer the most likely values for four planning fields. "
+                "Return only a valid JSON object with exactly these keys: "
+                "business_objective, intended_user, business_rules, notes. "
+                "Keep each value concise and specific. If a field cannot be reasonably inferred, return an empty string for it. "
+                "Do not include any text outside the JSON."
+            ),
+            messages=[{
+                "role": "user",
+                "content": f"Feature: {feature_name}\nDescription: {feature_description}"
+            }],
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return _json.loads(raw.strip())
+    except Exception as e:
+        print(f"[llm_client] suggest_fanout_context failed: {e}")
+        return None
+
+
 def call_fanout(system_prompt: str, user_message: str) -> str | None:
     """Send the fan-out decomposition prompt. Uses a larger token budget for multiple stories."""
     FANOUT_MAX_TOKENS = 8192
