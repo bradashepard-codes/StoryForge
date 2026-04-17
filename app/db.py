@@ -161,6 +161,10 @@ def delete_feature(feature_id: str):
     get_client().table("features").delete().eq("id", feature_id).execute()
 
 
+def bulk_delete_features(feature_ids: list[str]):
+    get_client().table("features").delete().in_("id", feature_ids).execute()
+
+
 # --- User Stories ---
 
 def list_stories(feature_id: str) -> list:
