@@ -175,7 +175,7 @@ def list_stories(feature_id: str) -> list:
     return response.data or []
 
 
-def save_story(feature_id: str, story_package: dict, user_id: str) -> dict:
+def save_story(feature_id: str, story_package: dict, user_id: str, source: str = "M") -> dict:
     payload = {
         "feature_id": feature_id,
         "title": story_package.get("title", ""),
@@ -186,6 +186,7 @@ def save_story(feature_id: str, story_package: dict, user_id: str) -> dict:
         "assumptions": story_package.get("assumptions", []),
         "confidence": story_package.get("confidence"),
         "escalation_flag": story_package.get("escalation_flag", False),
+        "source": source,
         "created_by": user_id,
     }
     response = get_client().table("user_stories").insert(payload).execute()

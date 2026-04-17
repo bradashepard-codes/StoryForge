@@ -4,6 +4,18 @@ from app.prompts import build_improved_prompt, build_fanout_prompt
 from app.llm_client import call_improved, call_fanout, suggest_fanout_context
 from app.parser import parse_output, parse_fanout_output
 
+SOURCE_BADGE = {
+    "A": "⭐ AI-Generated",
+    "M": "✍️ Manual",
+    "E": "✏️ Edited",
+}
+
+
+def _story_label(story: dict) -> str:
+    badge = SOURCE_BADGE.get(story.get("source", "M"), "✍️ Manual")
+    title = story.get("title") or story.get("user_story", "")[:60] or "Story"
+    return f"{badge} — {title}"
+
 
 def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
     if not feature.get("is_enhanced", False):
@@ -92,7 +104,7 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
         st.caption("Deselect any stories you don't want to save, then click Save Selected.")
 
         for i, story in enumerate(fanout_stories):
-            label = story.get("title") or f"Story {i + 1}"
+            label = f"⭐ AI-Generated — {story.get('title') or f'Story {i + 1}'}"
             with st.container(border=True):
                 keep = st.checkbox(f"Include Story {i + 1}", value=st.session_state.get(f"fanout_sel_{i}", True), key=f"fanout_sel_{i}")
                 if keep:
@@ -117,7 +129,7 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
                 saved, failed = 0, 0
                 for i, story in enumerate(fanout_stories):
                     if st.session_state.get(f"fanout_sel_{i}", True):
-                        result = save_story(feature_id, story, user_id)
+                        result = save_story(feature_id, story, user_id, source="A")
                         if result:
                             saved += 1
                         else:
@@ -163,7 +175,7 @@ def render_feature():
 
     if stories:
         for story in stories:
-            label = story.get("title") or story.get("user_story", "")[:80] or f"Story — {story['created_at'][:10]}"
+            label = _story_label(story)
             with st.expander(label, expanded=False):
                 st.markdown(f"**User Story**\n\n{story['user_story']}")
 
@@ -248,7 +260,7 @@ def render_feature():
                 if parsed is None:
                     st.error("Failed to parse the generated output. Try again.")
                 else:
-                    saved = save_story(feature_id, parsed.model_dump(), user_id)
+                    saved = save_story(feature_id, parsed.model_dump(), user_id, source="A")
                     if saved:
                         st.success("Story saved.")
                         st.rerun()
