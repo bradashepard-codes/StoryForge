@@ -76,7 +76,12 @@ def suggest_fanout_context(feature_name: str, feature_description: str) -> dict 
                 "Given a feature name and description, infer the most likely values for four planning fields. "
                 "Return only a valid JSON object with exactly these keys: "
                 "business_objective, intended_user, business_rules, notes. "
-                "Keep each value concise and specific. If a field cannot be reasonably inferred, return an empty string for it. "
+                "Formatting rules: "
+                "- business_objective: one concise sentence. "
+                "- intended_user: short role name only (e.g. 'Broker', 'Underwriter'). "
+                "- business_rules: if multiple rules exist, format as a markdown numbered list with each item on its own line (e.g. '1. Rule one\\n2. Rule two'). "
+                "- notes: if multiple notes exist, format as a markdown bulleted list with each item on its own line (e.g. '- Note one\\n- Note two'). "
+                "If a field cannot be reasonably inferred, return an empty string. "
                 "Do not include any text outside the JSON."
             ),
             messages=[{
