@@ -69,3 +69,57 @@ Business Rules: {feature_input.get('business_rules', 'None provided')}
 Notes / Assumptions: {feature_input.get('assumptions', 'None provided')}"""
 
     return system_prompt, user_message
+
+
+def build_fanout_prompt(feature_input: dict) -> tuple[str, str]:
+    """Prompt that decomposes a feature into an array of atomic StoryPackage objects."""
+
+    system_prompt = """You are an expert Business Analyst specializing in specialty insurance delivery workflows.
+
+Your task is to decompose a feature description into a set of atomic user stories for Agile sprint planning.
+
+Rules:
+- Decompose the feature into 3–7 stories. Each story must be independently deliverable and testable.
+- Scope each story as small as possible — one discrete behaviour or capability per story.
+- Do not pad with trivial stories. Do not merge stories that address different behaviours.
+- Write each user story in the format: As a [persona], I want [goal], so that [business value].
+- Write acceptance criteria in Given/When/Then format. Each criterion must be specific and testable.
+- Assess the Definition of Ready for each story using the six criteria below.
+- List any information that is missing or ambiguous per story.
+- List any assumptions you made per story.
+- Assign a confidence level: low, medium, or high.
+- Set escalation_flag to true for any story where the input is too ambiguous to produce testable criteria.
+
+Definition of Ready criteria:
+1. Clear user persona identified
+2. Clear business objective stated
+3. Acceptance criteria are testable and specific
+4. No unresolved dependencies
+5. No major ambiguity in requirements
+6. Success conditions are measurable
+
+Return only a valid JSON array of story objects. Do not include any text outside the JSON array.
+
+Each object must match this exact schema:
+{
+  "user_story": string,
+  "acceptance_criteria": [string],
+  "definition_of_ready": {
+    "is_ready": boolean,
+    "criteria_met": [string],
+    "criteria_missing": [string]
+  },
+  "missing_information": [string],
+  "assumptions": [string],
+  "confidence": "low" | "medium" | "high",
+  "escalation_flag": boolean
+}"""
+
+    user_message = f"""Feature: {feature_input['feature_name']}
+Description: {feature_input['feature_description']}
+Business Objective: {feature_input['business_objective']}
+Intended User: {feature_input['intended_user']}
+Business Rules: {feature_input.get('business_rules', 'None provided')}
+Notes / Assumptions: {feature_input.get('notes', 'None provided')}"""
+
+    return system_prompt, user_message

@@ -110,11 +110,29 @@ def list_features(project_id: str) -> list:
     return response.data or []
 
 
-def create_feature(project_id: str, name: str, description: str, user_id: str) -> dict:
+def get_feature(feature_id: str) -> dict:
     response = (
         get_client()
         .table("features")
-        .insert({"project_id": project_id, "name": name, "description": description, "created_by": user_id})
+        .select("*")
+        .eq("id", feature_id)
+        .single()
+        .execute()
+    )
+    return response.data or {}
+
+
+def create_feature(project_id: str, name: str, description: str, user_id: str, is_enhanced: bool = False) -> dict:
+    response = (
+        get_client()
+        .table("features")
+        .insert({
+            "project_id": project_id,
+            "name": name,
+            "description": description,
+            "created_by": user_id,
+            "is_enhanced": is_enhanced,
+        })
         .execute()
     )
     return response.data[0] if response.data else {}

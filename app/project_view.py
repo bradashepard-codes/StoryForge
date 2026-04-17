@@ -113,7 +113,8 @@ def render_project():
                         if not new_name:
                             st.error("Feature name is required.")
                         else:
-                            update_feature(fid, {"name": new_name, "description": final_desc})
+                            is_enhanced = st.session_state.get("edit_desc_choice") == "Enhanced"
+                            update_feature(fid, {"name": new_name, "description": final_desc, "is_enhanced": is_enhanced})
                             st.session_state.pop("editing_feature_id", None)
                             st.session_state.pop("edit_enhanced_description", None)
                             st.session_state.pop("edit_original_description", None)
@@ -138,7 +139,8 @@ def render_project():
         if not name:
             st.error("Feature name is required.")
         else:
-            create_feature(project_id, name, final_description, user_id)
+            is_enhanced = st.session_state.get("desc_choice") == "Enhanced"
+            create_feature(project_id, name, final_description, user_id, is_enhanced=is_enhanced)
             st.session_state.pop("enhanced_description", None)
             st.session_state.pop("original_description", None)
             st.rerun()

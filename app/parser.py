@@ -52,6 +52,23 @@ def parse_output(raw: str) -> StoryPackage | None:
         return None
 
 
+def parse_fanout_output(raw: str) -> list[StoryPackage] | None:
+    """Parse raw model output into a validated list of StoryPackage objects."""
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text.strip())
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Expected a non-empty JSON array")
+        return [StoryPackage(**item) for item in data]
+    except (json.JSONDecodeError, ValueError, KeyError) as e:
+        logging.error(f"Fan-out parse failed: {e}\nRaw output:\n{raw}")
+        return None
+
+
 def parse_baseline_output(raw: str) -> str:
     """
     Baseline output is unstructured text — return as-is for display.
