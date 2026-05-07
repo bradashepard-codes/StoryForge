@@ -50,7 +50,7 @@ def _render_enhance_controls(description: str | None, enhanced_key: str, origina
 @st.dialog("Add Feature")
 def _add_feature_modal(project_id: str, user_id: str):
     name = st.text_input("Feature Name")
-    description = st.text_area("Description (optional)", height=100, key="modal_feat_desc")
+    description = st.text_area("Description", height=100, key="modal_feat_desc")
 
     final_description = _render_enhance_controls(
         description=description,
@@ -59,14 +59,24 @@ def _add_feature_modal(project_id: str, user_id: str):
         choice_key="modal_desc_choice",
     )
 
+    business_objective = st.text_input("Business Objective (optional)")
+    intended_user = st.text_input("Intended End User (optional)")
+
     col_save, col_cancel = st.columns(2)
     with col_save:
         if st.button("Add Feature", use_container_width=True, type="primary"):
             if not name:
                 st.error("Feature name is required.")
+            elif not final_description:
+                st.error("Description is required.")
             else:
                 is_enhanced = st.session_state.get("modal_desc_choice") == "Enhanced"
-                create_feature(project_id, name, final_description or "", user_id, is_enhanced=is_enhanced)
+                create_feature(
+                    project_id, name, final_description, user_id,
+                    is_enhanced=is_enhanced,
+                    business_objective=business_objective,
+                    intended_user=intended_user,
+                )
                 for key in ["modal_enhanced_description", "modal_original_description", "modal_desc_choice"]:
                     st.session_state.pop(key, None)
                 st.rerun()
@@ -91,14 +101,25 @@ def _edit_feature_modal(feature: dict):
         choice_key="modal_edit_choice",
     )
 
+    new_biz_obj = st.text_input("Business Objective (optional)", value=feature.get("business_objective", ""))
+    new_intended_user = st.text_input("Intended End User (optional)", value=feature.get("intended_user", ""))
+
     col_save, col_cancel = st.columns(2)
     with col_save:
         if st.button("Save", use_container_width=True, type="primary"):
             if not new_name:
                 st.error("Feature name is required.")
+            elif not final_desc:
+                st.error("Description is required.")
             else:
                 is_enhanced = st.session_state.get("modal_edit_choice") == "Enhanced"
-                update_feature(fid, {"name": new_name, "description": final_desc, "is_enhanced": is_enhanced})
+                update_feature(fid, {
+                    "name": new_name,
+                    "description": final_desc,
+                    "is_enhanced": is_enhanced,
+                    "business_objective": new_biz_obj,
+                    "intended_user": new_intended_user,
+                })
                 for key in ["modal_edit_enhanced", "modal_edit_original", "modal_edit_choice"]:
                     st.session_state.pop(key, None)
                 st.rerun()

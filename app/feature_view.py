@@ -21,8 +21,11 @@ def _story_label(story: dict) -> str:
 
 @st.dialog("Generate All Stories")
 def _fanout_modal(feature: dict, feature_id: str, user_id: str):
-    ctx_key = f"fanout_ctx_{feature_id}"
+    biz_obj = feature.get("business_objective", "")
+    intended_user = feature.get("intended_user", "")
+    missing_context = not biz_obj or not intended_user
 
+    ctx_key = f"fanout_ctx_{feature_id}"
     if ctx_key not in st.session_state:
         with st.spinner("Inferring context from feature description..."):
             suggestions = suggest_fanout_context(
@@ -30,18 +33,15 @@ def _fanout_modal(feature: dict, feature_id: str, user_id: str):
                 feature.get("description", ""),
             ) or {}
         st.session_state[ctx_key] = suggestions
-        st.session_state["fanout_biz_obj"] = suggestions.get("business_objective", "")
-        st.session_state["fanout_intended_user"] = suggestions.get("intended_user", "")
         st.session_state["fanout_biz_rules"] = suggestions.get("business_rules", "")
         st.session_state["fanout_notes"] = suggestions.get("notes", "")
 
-    st.caption("Review and edit the context below, then generate.")
-
-    st.markdown("**Business Objective** *(required)*")
-    st.text_area("", key="fanout_biz_obj", height=80, label_visibility="collapsed")
-
-    st.markdown("**Intended End User** *(required)*")
-    st.text_input("", key="fanout_intended_user", label_visibility="collapsed")
+    if missing_context:
+        st.warning("Business Objective and Intended End User are not set on this feature. Fill them in below or update the feature first.")
+        biz_obj = st.text_input("Business Objective *(required)*", value=biz_obj)
+        intended_user = st.text_input("Intended End User *(required)*", value=intended_user)
+    else:
+        st.caption(f"Business Objective: {biz_obj}  |  Intended User: {intended_user}")
 
     st.markdown("**Business Rules or Constraints**")
     tab_rules_preview, tab_rules_edit = st.tabs(["Preview", "Edit"])
@@ -62,8 +62,6 @@ def _fanout_modal(feature: dict, feature_id: str, user_id: str):
     col_gen, col_cancel = st.columns([2, 1])
     with col_gen:
         if st.button("🚀 Generate", type="primary", use_container_width=True, key="btn_fanout_modal_generate"):
-            biz_obj = st.session_state.get("fanout_biz_obj", "")
-            intended_user = st.session_state.get("fanout_intended_user", "")
             if not biz_obj or not intended_user:
                 st.error("Business objective and intended user are required.")
             else:
@@ -158,24 +156,36 @@ def _render_fanout_preview(feature_id: str, user_id: str):
 
 @st.dialog("New User Story")
 def _story_modal(feature: dict, feature_id: str, user_id: str):
+    biz_obj = feature.get("business_objective", "")
+    intended_user = feature.get("intended_user", "")
+    missing_context = not biz_obj or not intended_user
+
     feature_name = feature.get("name", "")
+    feature_description = feature.get("description", "")
+
     feature_title = st.text_input("Feature Title", value=feature_name)
-    feature_description = st.text_area("Feature Description", height=100)
-    business_objective = st.text_input("Business Objective")
-    intended_user = st.text_input("Intended End User")
+    story_description = st.text_area("Feature Description", value=feature_description, height=100)
+
+    if missing_context:
+        st.warning("Business Objective and Intended End User are not set on this feature. Fill them in below or update the feature first.")
+        biz_obj = st.text_input("Business Objective *(required)*", value=biz_obj)
+        intended_user = st.text_input("Intended End User *(required)*", value=intended_user)
+    else:
+        st.caption(f"Business Objective: {biz_obj}  |  Intended User: {intended_user}")
+
     business_rules = st.text_area("Business Rules or Constraints (optional)", height=80)
     notes = st.text_area("Additional Notes (optional)", height=60)
 
     col_generate, col_cancel = st.columns([2, 1])
     with col_generate:
         if st.button("Generate Story", use_container_width=True, type="primary", key="btn_modal_generate"):
-            if not feature_description or not business_objective or not intended_user:
+            if not story_description or not biz_obj or not intended_user:
                 st.error("Feature description, business objective, and intended user are required.")
             else:
                 feature_input = {
                     "feature_name": feature_title,
-                    "feature_description": feature_description,
-                    "business_objective": business_objective,
+                    "feature_description": story_description,
+                    "business_objective": biz_obj,
                     "intended_user": intended_user,
                     "business_rules": business_rules,
                     "notes": notes,

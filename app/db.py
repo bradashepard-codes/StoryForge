@@ -130,7 +130,15 @@ def get_feature(feature_id: str) -> dict:
     return response.data or {}
 
 
-def create_feature(project_id: str, name: str, description: str, user_id: str, is_enhanced: bool = False) -> dict:
+def create_feature(
+    project_id: str,
+    name: str,
+    description: str,
+    user_id: str,
+    is_enhanced: bool = False,
+    business_objective: str = "",
+    intended_user: str = "",
+) -> dict:
     response = (
         get_client()
         .table("features")
@@ -140,6 +148,8 @@ def create_feature(project_id: str, name: str, description: str, user_id: str, i
             "description": description,
             "created_by": user_id,
             "is_enhanced": is_enhanced,
+            "business_objective": business_objective,
+            "intended_user": intended_user,
         })
         .execute()
     )
