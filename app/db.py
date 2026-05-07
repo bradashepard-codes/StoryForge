@@ -197,5 +197,16 @@ def save_story(feature_id: str, story_package: dict, user_id: str, source: str =
     return response.data[0] if response.data else {}
 
 
+def update_story(story_id: str, updates: dict) -> dict:
+    response = (
+        get_client()
+        .table("user_stories")
+        .update(updates)
+        .eq("id", story_id)
+        .execute()
+    )
+    return response.data[0] if response.data else {}
+
+
 def delete_story(story_id: str):
     get_client().table("user_stories").delete().eq("id", story_id).execute()
