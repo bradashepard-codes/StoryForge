@@ -6,7 +6,7 @@
 
 ## 1. Project Title
 
-**StoryForge: Generating Definition-of-Ready User Stories from Feature Descriptions**
+**StoryForge: Two-Workflow Generative AI Application for Sprint Readiness**
 
 ---
 
@@ -16,14 +16,25 @@
 
 The primary user is a **Functional Lead in a Specialty Insurance company** responsible for managing a portfolio of 20+ concurrent projects and translating business requirements into delivery-ready backlog items.
 
-### Workflow
+### Two Workflows
+
+StoryForge provides two independent generative workflows that operate on the same feature input and address complementary aspects of sprint readiness.
+
+#### Workflow 1 — User Story Generation
 
 > Convert a **single feature description** into a **Definition-of-Ready (DoR) user story package with structured acceptance criteria**
 
-### Workflow Boundaries
-
 - **Start:** Functional Lead inputs a feature description, business objective, intended user, business rules, and any known constraints
 - **End:** A structured, review-ready user story package is generated and ready for backlog entry or escalation
+
+#### Workflow 2 — Risk and Requirement Expansion
+
+> Take the **same feature input** and surface **edge cases, dependencies, ambiguities, and missing requirements** that could cause problems during implementation or sprint planning
+
+- **Start:** Same feature description as Workflow 1 (with optional additional context)
+- **End:** A structured risk analysis that strengthens sprint readiness before development begins
+
+The two workflows are independent — either can be run without the other — but are designed to be used together as complementary tools in the same sprint planning session.
 
 ### Business Value
 
@@ -31,6 +42,7 @@ The primary user is a **Functional Lead in a Specialty Insurance company** respo
 - Enforces consistent Given/When/Then acceptance criteria format across all stories and team members
 - Systematically identifies ambiguity and missing information on every generation — not only when the author notices it
 - Automates Definition-of-Ready compliance checks, which are frequently skipped under time pressure
+- Surfaces edge cases, dependencies, and missing requirements before development begins — reducing mid-sprint surprises
 - Reduces downstream rework for engineering and QA caused by under-specified or untestable stories
 
 ---
@@ -64,11 +76,14 @@ Templates and forms cannot:
 
 ### System Design Overview
 
-A **Streamlit application** that:
+A **Streamlit application** with Supabase authentication and persistent storage that:
 
-1. Accepts a structured feature input (name, description, business objective, intended user, business rules, assumptions)
-2. Generates a structured, Definition-of-Ready user story package using the Claude API
+1. Accepts a structured feature input (name, description, business objective, intended user, business rules, notes)
+2. Generates a structured, Definition-of-Ready user story package using the Claude API (Workflow 1)
 3. Surfaces ambiguity, missing information, DoR compliance status, and escalation signals for human review
+4. Analyzes the same feature for edge cases, dependencies, ambiguities, and missing requirements (Workflow 2)
+
+Both workflows share the same LLM provider (`claude-sonnet-4-6`) and validation approach (Pydantic-enforced JSON schema) but use independent prompts and output models.
 
 ---
 
@@ -112,6 +127,27 @@ The context-engineered system prompt (`build_improved_prompt()` in `app/prompts.
 
 ---
 
+#### Concept 2b — Workflow 2: Risk and Requirement Expansion Prompt
+
+**How it shows up:**
+
+The risk expansion prompt (`build_risk_expansion_prompt()` in `app/prompts.py`) applies the same context engineering principles as Workflow 1 with a different analytical frame:
+
+1. **Role instruction:** "You are an expert QA Lead and requirements analyst specializing in specialty insurance delivery workflows." The role shift is intentional — a QA perspective generates different findings than a Business Analyst perspective on the same input.
+
+2. **Task rules:** Seven explicit behavioral constraints covering edge case identification, dependency listing, ambiguity flagging, missing requirements detection, severity assignment, and specificity requirements (findings must be specific to this feature, not general best practices).
+
+3. **Few-shot example:** Same feature as Workflow 1 (broker policy change submission), producing a full risk analysis output. This anchors the analytical depth and specificity expected for each category.
+
+4. **Output schema:** Four lists plus a severity summary (`low`, `medium`, `high`), validated by the `RiskAnalysisPackage` Pydantic model. Same parse-or-reject enforcement as Workflow 1.
+
+**LLM parameters:**
+- Model: `claude-sonnet-4-6`
+- Temperature: `0.3`
+- Max tokens: `2048` — sufficient for a thorough risk analysis; smaller budget than story generation because findings are shorter than full story packages
+
+---
+
 #### Concept 3 — Evaluation Design (Week 6)
 
 **How it shows up:**
@@ -148,6 +184,20 @@ All generated outputs must conform to the following schema:
 ```
 
 Outputs that do not conform to this structure are treated as invalid and not surfaced to the user.
+
+### Workflow 2 Output Contract — Risk Analysis
+
+```json
+{
+  "edge_cases": ["list of specific scenarios that could break the feature"],
+  "dependencies": ["list of external systems, teams, APIs, or data sources"],
+  "ambiguities": ["list of unclear or conflicting requirements"],
+  "missing_requirements": ["list of implicit or forgotten requirements"],
+  "severity_summary": "low | medium | high"
+}
+```
+
+Validated by the `RiskAnalysisPackage` Pydantic model. Outputs that do not conform are treated as invalid.
 
 ### Definition of Ready (DoR) Criteria
 
@@ -203,16 +253,18 @@ These estimates reflect the nature of the workflow and the structured output con
 ### Application Experience
 
 User flow:
-1. User enters feature details into the structured input form
-2. Clicks **Generate**
-3. System displays the complete structured user story package
-4. User reviews:
-   - story quality and user story statement
-   - acceptance criteria (Given/When/Then)
-   - DoR compliance status (criteria met / missing)
-   - missing information and assumptions
-   - confidence level and escalation flag
-5. User decides: accept the story, revise the input and regenerate, or escalate
+1. User signs in and creates a project and feature
+2. Optionally enhances the feature description with AI (improves clarity before generation)
+3. **Workflow 1 — User Story Generation:**
+   - Fan-out mode: generates 3–7 atomic stories from one enhanced feature description
+   - Single-story mode: generates one story via modal with a full input form
+   - Reviews: story statement, acceptance criteria (Given/When/Then), DoR status, missing information, confidence, escalation flag
+   - Saves selected stories to the feature with AI source badge
+4. **Workflow 2 — Risk and Requirement Expansion:**
+   - Enters optional context (business objective, intended user, rules) and clicks Analyze Risks
+   - Reviews: overall severity, edge cases, dependencies, ambiguities, missing requirements
+   - Uses findings to strengthen the feature before sprint planning
+5. User decides: accept stories, revise inputs and regenerate, or escalate based on risk findings
 
 ---
 

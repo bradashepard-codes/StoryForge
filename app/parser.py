@@ -32,6 +32,21 @@ class StoryPackage(BaseModel):
         return v
 
 
+class RiskAnalysisPackage(BaseModel):
+    edge_cases: List[str]
+    dependencies: List[str]
+    ambiguities: List[str]
+    missing_requirements: List[str]
+    severity_summary: str
+
+    @field_validator("severity_summary")
+    @classmethod
+    def severity_must_be_valid(cls, v):
+        if v not in ("low", "medium", "high"):
+            raise ValueError("severity_summary must be low, medium, or high")
+        return v
+
+
 def parse_output(raw: str) -> StoryPackage | None:
     """
     Parse raw model output into a validated StoryPackage.
@@ -75,3 +90,18 @@ def parse_baseline_output(raw: str) -> str:
     Baseline output is unstructured text — return as-is for display.
     """
     return raw.strip()
+
+
+def parse_risk_expansion_output(raw: str) -> RiskAnalysisPackage | None:
+    """Parse raw model output into a validated RiskAnalysisPackage."""
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text.strip())
+        return RiskAnalysisPackage(**data)
+    except (json.JSONDecodeError, ValueError, KeyError) as e:
+        logging.error(f"Risk expansion parse failed: {e}\nRaw output:\n{raw}")
+        return None

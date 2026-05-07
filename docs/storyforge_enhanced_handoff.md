@@ -2,14 +2,14 @@
 
 **Branch:** `feature/storyforge-enhanced`
 **Entry point:** `python3 -m streamlit run enhanced_app.py`
-**Last updated:** April 2026
-**Status:** Actively in development — core workflows complete, story edit workflow not yet built
+**Last updated:** May 2026
+**Status:** This IS the capstone deliverable — two workflows built, story edit workflow not yet built
 
 ---
 
 ## What This Is
 
-StoryForge Enhanced is a second-generation version of the capstone StoryForge app. It is **not** the capstone deliverable. It extends the base app with user authentication, a persistent cloud database, a full project hierarchy, and an AI-powered fan-out story generation workflow. It lives permanently on the `feature/storyforge-enhanced` branch and must not be merged to `dev` or `main` without explicit approval.
+StoryForge Enhanced is the **final capstone deliverable**. Scope change approved by the professor (May 2026): the system is repositioned as a two-workflow generative AI application — User Story Generation (built) and Risk and Requirement Expansion (built). It extends the original prototype with user authentication, a persistent cloud database, a full project hierarchy, and AI-powered story generation and risk analysis workflows.
 
 ---
 
@@ -64,10 +64,19 @@ Only available when `feature.is_enhanced = true`.
 
 ### Single Story Generation (Feature View)
 - Available on all features regardless of `is_enhanced`
-- Inline form below the fan-out section (or at the bottom if no fan-out section)
+- Opened via "**+ New Story**" button which triggers an `st.dialog` modal
 - Fields: feature title, description, business objective, intended user, business rules (optional), notes (optional)
 - Generates one story using the same context-engineered prompt as the capstone
 - Saved with `source = "A"` (AI-Generated)
+
+### Risk and Requirement Expansion (Feature View)
+- Available on all features regardless of `is_enhanced`
+- Located between the fan-out section and the single story button
+- User optionally provides: business objective, intended user, business rules, notes
+- Generates a `RiskAnalysisPackage` via `build_risk_expansion_prompt()` → `call_risk_expansion()` → `parse_risk_expansion_output()`
+- Displays: overall severity (red/orange/green), edge cases, dependencies, ambiguities, missing requirements
+- Results cached in `st.session_state[f"risk_analysis_{feature_id}"]` — cleared on back navigation
+- No database save — analysis is advisory and ephemeral
 
 ### Story Display
 - All stories listed as expandable cards with source badge:
@@ -84,7 +93,6 @@ Only available when `feature.is_enhanced = true`.
 | Feature | Notes |
 |---|---|
 | Story edit workflow | `source = "E"` is reserved in schema but edit modal not built |
-| Story generation modal | Single story generation is still inline, not a modal — next planned UI refactor |
 | Story export | No export to Jira, CSV, or other formats |
 | Multi-user collaboration | RLS is per-user; no sharing or team access |
 | Project archiving | No soft delete — delete is permanent |
@@ -125,6 +133,7 @@ Relevant session state keys:
 | `fanout_intended_user` | str | Intended user form field |
 | `fanout_biz_rules` | str | Business rules form field |
 | `fanout_notes` | str | Notes form field |
+| `risk_analysis_{feature_id}` | dict | Cached `RiskAnalysisPackage` for this feature — cleared on back navigation |
 
 ### UI Pattern
 All create/edit actions use `st.dialog` modals. Key rule: **never call `st.rerun()` inside a modal helper** — button clicks already trigger reruns, and `st.rerun()` inside `st.dialog` closes the modal.
@@ -167,9 +176,9 @@ RLS: users see only stories on their own features
 | `app/project_view.py` | Feature list, Add/Edit/Bulk Delete modals, enhance workflow |
 | `app/feature_view.py` | Story list, fan-out section, single story generation form |
 | `app/db.py` | All Supabase queries — auth, projects, features, stories |
-| `app/prompts.py` | `build_improved_prompt()`, `build_fanout_prompt()` |
-| `app/llm_client.py` | `call_improved()`, `call_fanout()`, `enhance_feature_description()`, `suggest_fanout_context()` |
-| `app/parser.py` | `StoryPackage` Pydantic model, `parse_output()`, `parse_fanout_output()` |
+| `app/prompts.py` | `build_improved_prompt()`, `build_fanout_prompt()`, `build_risk_expansion_prompt()` |
+| `app/llm_client.py` | `call_improved()`, `call_fanout()`, `call_risk_expansion()`, `enhance_feature_description()`, `suggest_fanout_context()` |
+| `app/parser.py` | `StoryPackage`, `RiskAnalysisPackage` Pydantic models; `parse_output()`, `parse_fanout_output()`, `parse_risk_expansion_output()` |
 
 ---
 
@@ -179,8 +188,9 @@ RLS: users see only stories on their own features
 |---|---|---|---|---|
 | `enhance_feature_description()` | claude-sonnet-4-6 | 0.4 | 512 | Refine feature description |
 | `suggest_fanout_context()` | claude-sonnet-4-6 | 0.3 | 512 | Infer fanout context from feature |
-| `call_improved()` | claude-sonnet-4-6 | 0.3 | 4096 | Single story generation |
-| `call_fanout()` | claude-sonnet-4-6 | 0.3 | 8192 | Fan-out: 3–7 stories from one feature |
+| `call_improved()` | claude-sonnet-4-6 | 0.3 | 4096 | Single story generation (Workflow 1) |
+| `call_fanout()` | claude-sonnet-4-6 | 0.3 | 8192 | Fan-out: 3–7 stories from one feature (Workflow 1) |
+| `call_risk_expansion()` | claude-sonnet-4-6 | 0.3 | 2048 | Risk and requirement expansion analysis (Workflow 2) |
 
 ---
 
@@ -213,6 +223,6 @@ python3 -m streamlit run enhanced_app.py
 
 ## Suggested Next Steps
 
-1. **Story edit workflow** — Add Edit Story modal; set `source = "E"` on save; re-run LLM to update or allow manual edit
-2. **Feature View modal refactor** — Move single story generation into a modal triggered from a header-row button (consistent with Dashboard and Project view patterns)
-3. **Story export** — Add CSV or JSON export from the feature view for sprint board import
+1. **Story edit workflow** — Add Edit Story modal; set `source = "E"` on save; allow manual edit of generated story fields
+2. **Story export** — Add CSV or JSON export from the feature view for sprint board import
+3. **Risk analysis persistence** — Optionally save risk analysis results to Supabase alongside stories if demo needs to show cross-session retention

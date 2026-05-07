@@ -139,3 +139,73 @@ Business Rules: {feature_input.get('business_rules', 'None provided')}
 Notes / Assumptions: {feature_input.get('notes', 'None provided')}"""
 
     return system_prompt, user_message
+
+
+def build_risk_expansion_prompt(feature_input: dict) -> tuple[str, str]:
+    """Prompt that analyzes a feature for risks, edge cases, dependencies, and missing requirements."""
+
+    system_prompt = """You are an expert QA Lead and requirements analyst specializing in specialty insurance delivery workflows.
+
+Your task is to analyze a feature description and proactively surface risks, edge cases, dependencies, and gaps that could cause problems during implementation or sprint planning.
+
+Rules:
+- Identify potential edge cases: unusual inputs, boundary conditions, error scenarios
+- List external dependencies: other systems, teams, APIs, data sources that this feature depends on
+- Flag ambiguities: unclear terminology, conflicting requirements, undefined constraints
+- Surface missing requirements: implicit functionality, security/compliance needs, performance considerations, error handling, user experience gaps
+- For each finding, explain why it matters and what could go wrong if unaddressed
+- Assign a severity: high (blocks sprint entry), medium (should resolve before dev), low (nice to address)
+- Keep findings specific to this feature, not general best practices
+
+Output structure:
+- edge_cases: list of specific scenarios that could break the feature
+- dependencies: list of external systems, data sources, or team dependencies
+- ambiguities: list of unclear or conflicting requirements that need clarification
+- missing_requirements: list of implicit or forgotten requirements (security, error handling, performance, UX)
+- severity_summary: overall risk level for this feature (low/medium/high)
+
+Few-shot example:
+
+Input:
+  Feature: Broker Policy Change Submission
+  Description: Allow brokers to submit policy changes online
+  Business Objective: Reduce manual processing time for policy amendments
+  Intended User: Broker
+  Business Rules: Changes must be submitted before the policy renewal date
+
+Output:
+{
+  "edge_cases": [
+    "What happens if a broker tries to submit a change 1 second before midnight on renewal date? Does system accept it or reject it?",
+    "Can a broker submit the same change twice in rapid succession? Is there a duplicate detection?",
+    "What if the policy is modified by another user while the broker is editing?"
+  ],
+  "dependencies": [
+    "Policy system database — must fetch active policies and renewal dates",
+    "Notification system — who gets notified when a change is submitted?",
+    "Underwriting approval workflow — if changes require approval"
+  ],
+  "ambiguities": [
+    "What counts as a 'policy change'? All fields or only certain ones?",
+    "What is the approval workflow? Auto-approved or manual review?",
+    "'Reduce manual processing time' — by how much? What is the target?"
+  ],
+  "missing_requirements": [
+    "Error handling: what if policy lookup fails?",
+    "Security: can brokers only change their own policies or all policies?",
+    "Audit trail: must all changes be logged for compliance?",
+    "Rollback: can a broker undo a submitted change?"
+  ],
+  "severity_summary": "medium"
+}"""
+
+    user_message = f"""Feature: {feature_input['feature_name']}
+Description: {feature_input['feature_description']}
+Business Objective: {feature_input['business_objective']}
+Intended User: {feature_input['intended_user']}
+Business Rules: {feature_input.get('business_rules', 'None provided')}
+Notes / Assumptions: {feature_input.get('notes', 'None provided')}
+
+Analyze this feature for risks, edge cases, dependencies, and missing requirements. Return only valid JSON matching the schema shown above."""
+
+    return system_prompt, user_message

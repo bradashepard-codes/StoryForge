@@ -1,14 +1,16 @@
 import streamlit as st
 from app.db import list_stories, save_story, delete_story, get_feature
-from app.prompts import build_improved_prompt, build_fanout_prompt
-from app.llm_client import call_improved, call_fanout, suggest_fanout_context
-from app.parser import parse_output, parse_fanout_output
+from app.prompts import build_improved_prompt, build_fanout_prompt, build_risk_expansion_prompt
+from app.llm_client import call_improved, call_fanout, call_risk_expansion, suggest_fanout_context
+from app.parser import parse_output, parse_fanout_output, parse_risk_expansion_output
 
 SOURCE_BADGE = {
     "A": "⭐ AI-Generated",
     "M": "✍️ Manual",
     "E": "✏️ Edited",
 }
+
+SEVERITY_COLOR = {"high": "red", "medium": "orange", "low": "green"}
 
 
 def _story_label(story: dict) -> str:
@@ -152,6 +154,117 @@ def _render_fanout_section(feature: dict, feature_id: str, user_id: str):
                 st.rerun()
 
 
+def _render_risk_expansion_section(feature: dict, feature_id: str):
+    risk_key = f"risk_analysis_{feature_id}"
+    analysis = st.session_state.get(risk_key)
+
+    st.divider()
+    st.markdown("#### Analyze Risks & Requirements")
+
+    if analysis is None:
+        st.caption(
+            "Surface edge cases, dependencies, ambiguities, and missing requirements "
+            "to strengthen readiness before sprint planning."
+        )
+
+        with st.form("risk_expansion_form"):
+            business_objective = st.text_input("Business Objective (optional)")
+            intended_user = st.text_input("Intended End User (optional)")
+            business_rules = st.text_area("Business Rules or Constraints (optional)", height=80)
+            notes = st.text_area("Additional Notes (optional)", height=60)
+            submitted = st.form_submit_button("🔍 Analyze Risks", use_container_width=True)
+
+        if submitted:
+            feature_input = {
+                "feature_name": feature.get("name", ""),
+                "feature_description": feature.get("description", ""),
+                "business_objective": business_objective or "Not provided",
+                "intended_user": intended_user or "Not provided",
+                "business_rules": business_rules or "None provided",
+                "notes": notes or "None provided",
+            }
+            with st.spinner("Analyzing risks and requirements..."):
+                system_prompt, user_message = build_risk_expansion_prompt(feature_input)
+                raw = call_risk_expansion(system_prompt, user_message)
+
+            if raw is None:
+                st.error("Analysis failed. Check your API key and network connection.")
+            else:
+                result = parse_risk_expansion_output(raw)
+                if result is None:
+                    st.error("Failed to parse the analysis. Try again.")
+                else:
+                    st.session_state[risk_key] = result.model_dump()
+                    st.rerun()
+    else:
+        severity = analysis.get("severity_summary", "medium")
+        color = SEVERITY_COLOR.get(severity, "orange")
+        st.markdown(f"**Overall Risk:** :{color}[{severity.capitalize()}]")
+
+        sections = [
+            ("Edge Cases", "edge_cases"),
+            ("Dependencies", "dependencies"),
+            ("Ambiguities", "ambiguities"),
+            ("Missing Requirements", "missing_requirements"),
+        ]
+        for heading, key in sections:
+            items = analysis.get(key, [])
+            if items:
+                st.markdown(f"**{heading}**")
+                for item in items:
+                    st.markdown(f"- {item}")
+
+        if st.button("Clear Analysis", key="btn_clear_risk"):
+            st.session_state.pop(risk_key, None)
+            st.rerun()
+
+
+@st.dialog("Generate New User Story")
+def _story_modal(feature: dict, feature_id: str, user_id: str):
+    feature_name = feature.get("name", "")
+    feature_title = st.text_input("Feature Title", value=feature_name)
+    feature_description = st.text_area("Feature Description", height=100)
+    business_objective = st.text_input("Business Objective")
+    intended_user = st.text_input("Intended End User")
+    business_rules = st.text_area("Business Rules or Constraints (optional)", height=80)
+    notes = st.text_area("Additional Notes (optional)", height=60)
+
+    col_generate, col_cancel = st.columns([2, 1])
+    with col_generate:
+        if st.button("Generate Story", use_container_width=True, type="primary", key="btn_modal_generate"):
+            if not feature_description or not business_objective or not intended_user:
+                st.error("Feature description, business objective, and intended user are required.")
+            else:
+                feature_input = {
+                    "feature_name": feature_title,
+                    "feature_description": feature_description,
+                    "business_objective": business_objective,
+                    "intended_user": intended_user,
+                    "business_rules": business_rules,
+                    "notes": notes,
+                }
+                with st.spinner("Generating story..."):
+                    system_prompt, user_message = build_improved_prompt(feature_input)
+                    raw = call_improved(system_prompt, user_message)
+
+                if raw is None:
+                    st.error("Generation failed. Check your API key and network connection.")
+                else:
+                    parsed = parse_output(raw)
+                    if parsed is None:
+                        st.error("Failed to parse the generated output. Try again.")
+                    else:
+                        saved = save_story(feature_id, parsed.model_dump(), user_id, source="A")
+                        if saved:
+                            st.success("Story saved.")
+                            st.rerun()
+                        else:
+                            st.error("Story generated but could not be saved.")
+    with col_cancel:
+        if st.button("Cancel", use_container_width=True, key="btn_modal_cancel"):
+            st.rerun()
+
+
 def render_feature():
     user = st.session_state["user"]
     user_id = user.id
@@ -163,7 +276,7 @@ def render_feature():
 
     if st.button("← Back", key="back_to_project"):
         st.session_state["view"] = "project"
-        for key in [k for k in list(st.session_state.keys()) if k.startswith("fanout_")]:
+        for key in [k for k in list(st.session_state.keys()) if k.startswith(("fanout_", "risk_"))]:
             st.session_state.pop(key)
         st.rerun()
 
@@ -224,45 +337,12 @@ def render_feature():
         st.info("No stories yet. Generate one below.")
 
     _render_fanout_section(feature, feature_id, user_id)
+    _render_risk_expansion_section(feature, feature_id)
 
     st.divider()
-    st.markdown("#### Generate New User Story")
-
-    with st.form("generate_story_form", clear_on_submit=True):
-        feature_title = st.text_input("Feature Title", value=feature_name)
-        feature_description = st.text_area("Feature Description", height=100)
-        business_objective = st.text_input("Business Objective")
-        intended_user = st.text_input("Intended End User")
-        business_rules = st.text_area("Business Rules or Constraints (optional)", height=80)
-        notes = st.text_area("Additional Notes (optional)", height=60)
-        submitted = st.form_submit_button("Generate Story", use_container_width=True)
-
-    if submitted:
-        if not feature_description or not business_objective or not intended_user:
-            st.error("Feature description, business objective, and intended user are required.")
-        else:
-            feature_input = {
-                "feature_name": feature_title,
-                "feature_description": feature_description,
-                "business_objective": business_objective,
-                "intended_user": intended_user,
-                "business_rules": business_rules,
-                "notes": notes,
-            }
-            with st.spinner("Generating story..."):
-                system_prompt, user_message = build_improved_prompt(feature_input)
-                raw = call_improved(system_prompt, user_message)
-
-            if raw is None:
-                st.error("Generation failed. Check your API key and network connection.")
-            else:
-                parsed = parse_output(raw)
-                if parsed is None:
-                    st.error("Failed to parse the generated output. Try again.")
-                else:
-                    saved = save_story(feature_id, parsed.model_dump(), user_id, source="A")
-                    if saved:
-                        st.success("Story saved.")
-                        st.rerun()
-                    else:
-                        st.error("Story generated but could not be saved.")
+    col_title, col_btn = st.columns([3, 1])
+    with col_title:
+        st.markdown("#### Generate New User Story")
+    with col_btn:
+        if st.button("+ New Story", key="btn_open_story_modal", use_container_width=True, type="primary"):
+            _story_modal(feature, feature_id, user_id)

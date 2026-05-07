@@ -1,40 +1,56 @@
 # StoryForge
 
-**Definition-of-Ready User Story Generator for Specialty Insurance Functional Leads**
+**Two-Workflow Generative AI Application for Specialty Insurance Functional Leads**
 
 ---
 
 ## Overview
 
-StoryForge is a narrowly scoped Generative AI application that converts a single feature description into a sprint-ready user story package. It is designed for Functional Leads in specialty insurance who manage large portfolios and need to rapidly translate ambiguous business requirements into structured, delivery-ready backlog items.
+StoryForge is a narrowly scoped Generative AI application designed for **Functional Leads in specialty insurance** who manage large portfolios and must rapidly translate ambiguous business requirements into structured, sprint-ready delivery artifacts.
 
-What would otherwise take a Functional Lead 30–60 minutes of manual drafting, iteration, and stakeholder reconciliation takes StoryForge under 3 minutes — with consistent structure, testable criteria, and explicit ambiguity detection every time.
-
-The system is evaluated by comparing its outputs against a human manual baseline to demonstrate measurable improvement in quality, consistency, and Definition-of-Ready compliance.
+The application provides two independent generative workflows that operate on the same feature input and address complementary aspects of sprint readiness.
 
 ---
 
 ## The Problem
 
-Functional Leads frequently receive high-level feature requests that are too vague or incomplete to place directly into a delivery backlog. Writing user stories with testable acceptance criteria is time-consuming, inconsistent, and prone to quality gaps — especially across 20+ concurrent projects.
+Functional Leads frequently receive high-level feature requests that are too vague or incomplete to place directly into a delivery backlog. Writing user stories with testable acceptance criteria is time-consuming and inconsistent. Hidden risks, dependencies, and missing requirements routinely surface mid-sprint — causing rework, missed deadlines, and scope disputes.
 
-StoryForge addresses that gap by generating a structured user story package and explicitly flagging ambiguity before it reaches engineering.
+StoryForge addresses both problems with a unified interface: generate the story, then stress-test the feature's readiness.
 
 ---
 
-## What It Generates
+## Two Workflows
 
-For each feature description submitted, StoryForge returns:
+### Workflow 1 — User Story Generation
 
-- **User story** — role, goal, and rationale
-- **Acceptance criteria** — Given/When/Then format
-- **Definition of Ready assessment** — criteria met and missing
-- **Missing information** — gaps that prevent sprint entry
-- **Assumptions** — inferred context
-- **Confidence level** — low / medium / high
-- **Escalation flag** — triggered when ambiguity is unresolvable
+Converts a feature description into a Definition-of-Ready user story package:
 
-All outputs conform to a fixed JSON schema. Outputs that do not match the schema are treated as invalid.
+| Output | Description |
+|---|---|
+| User story | As a / I want / so that format |
+| Acceptance criteria | Given/When/Then, specific and testable |
+| DoR assessment | Criteria met and missing |
+| Missing information | Gaps that prevent sprint entry |
+| Assumptions | Inferred context made explicit |
+| Confidence level | low / medium / high |
+| Escalation flag | Triggered when ambiguity is unresolvable |
+
+**Time reduction: 30–60 minutes (manual) → under 3 minutes**
+
+### Workflow 2 — Risk and Requirement Expansion
+
+Takes the same feature input and surfaces what the user story generation cannot detect:
+
+| Output | Description |
+|---|---|
+| Edge cases | Boundary conditions, error scenarios, timing issues |
+| Dependencies | External systems, teams, APIs, data sources |
+| Ambiguities | Unclear terminology, conflicting requirements |
+| Missing requirements | Security, compliance, error handling, UX gaps |
+| Overall severity | high / medium / low risk assessment |
+
+Both workflows operate independently and can be used together or separately before sprint planning.
 
 ---
 
@@ -44,10 +60,10 @@ All outputs conform to a fixed JSON schema. Outputs that do not match the schema
 |---|---|
 | UI | Streamlit |
 | Language | Python |
-| LLM Provider | Anthropic Claude API |
-| Environment | `.env` / `python-dotenv` |
+| LLM Provider | Anthropic Claude API (`claude-sonnet-4-6`) |
+| Auth + Database | Supabase (email/password auth, PostgreSQL with RLS) |
 | Validation | Pydantic |
-| Evaluation | Pandas, local scripts |
+| Environment | `.env` / `python-dotenv` |
 | Version Control | GitHub |
 
 ---
@@ -55,31 +71,36 @@ All outputs conform to a fixed JSON schema. Outputs that do not match the schema
 ## Repository Structure
 
 ```text
-storyforge/
+StoryForge/
 ├── app/
-│   ├── main.py
-│   ├── ui.py
-│   ├── prompts.py
-│   ├── llm_client.py
-│   ├── parser.py
-│   └── dor_checker.py
+│   ├── dashboard_view.py     # Project list with Add/Edit modals
+│   ├── db.py                 # All Supabase queries
+│   ├── dor_checker.py        # DoR compliance utilities
+│   ├── feature_view.py       # Story list, fan-out, risk analysis, single story modal
+│   ├── llm_client.py         # All LLM calls
+│   ├── login_view.py         # Sign in / sign up
+│   ├── parser.py             # Pydantic models and output parsers
+│   ├── project_view.py       # Feature list with Add/Edit/Bulk Delete modals
+│   ├── prompts.py            # All prompt builders
+│   └── ui.py                 # Shared UI helpers
 ├── eval/
-│   ├── run_eval.py
-│   ├── rubric.py
-│   ├── compare_results.py
-│   └── test_cases.json
+│   ├── run_eval.py           # Automated evaluation runner (--runs flag for reliability)
+│   ├── rubric.py             # Five-dimension scoring rubric
+│   ├── compare_results.py    # Dimension-level delta analysis
+│   └── test_cases.json       # 16 synthetic test cases
 ├── outputs/
 │   ├── baseline_results.json
 │   ├── improved_results.json
-│   └── eval_scores.csv
+│   ├── eval_scores.csv
+│   └── parse_errors.log
 ├── docs/
 │   ├── project_plan.md
 │   ├── technical_design.md
-│   └── evaluation_notes.md
+│   └── storyforge_enhanced_handoff.md
+├── enhanced_app.py           # Entry point
 ├── .env.example
 ├── requirements.txt
-├── README.md
-└── streamlit_app.py
+└── README.md
 ```
 
 ---
@@ -87,8 +108,10 @@ storyforge/
 ## Getting Started
 
 ### Prerequisites
+
 - Python 3.9+
 - An Anthropic API key
+- A Supabase project (free tier) with `SUPABASE_URL` and `SUPABASE_ANON_KEY`
 
 ### Setup
 
@@ -97,24 +120,26 @@ git clone https://github.com/bradashepard-codes/StoryForge.git
 cd StoryForge
 pip install -r requirements.txt
 cp .env.example .env
-# Add your Anthropic API key to .env
+# Add your ANTHROPIC_API_KEY, SUPABASE_URL, and SUPABASE_ANON_KEY to .env
 ```
 
 ### Run the App
 
 ```bash
-streamlit run streamlit_app.py
+python3 -m streamlit run enhanced_app.py
 ```
 
 ---
 
 ## Usage
 
-1. Enter a feature description into the input form
-2. Click **Generate**
-3. Review the structured user story and acceptance criteria
-4. Assess the DoR status, missing information, and escalation flag
-5. Accept, revise, or escalate as needed
+1. Sign in or create an account
+2. Create a project and add a feature
+3. Open a feature to access both workflows:
+   - **Generate All Stories** — fan-out decomposition (requires AI-enhanced feature description)
+   - **Generate New User Story** — single story via modal
+   - **Analyze Risks & Requirements** — risk expansion for the same feature
+4. Review all outputs before sprint entry
 
 **Human review is required before any output is treated as sprint-ready.**
 
@@ -122,20 +147,21 @@ streamlit run streamlit_app.py
 
 ## Evaluation
 
-StoryForge includes a local evaluation harness that scores StoryForge outputs against a human manual baseline across a synthetic test set of 12 feature inputs using a five-dimension rubric:
+StoryForge includes a local evaluation harness that scores Workflow 1 outputs against a human manual baseline across 16 synthetic test cases using a five-dimension rubric:
 
 | Dimension | What It Measures |
 |---|---|
 | Clarity | Precision and lack of ambiguity |
 | Completeness | All required story elements present |
 | Testability | Acceptance criteria are verifiable |
-| DoR Compliance | Meets Definition of Ready criteria |
+| DoR Compliance | Meets all six Definition of Ready criteria |
 | Escalation Accuracy | Correctly flags ambiguous inputs |
 
 Run evaluation:
 
 ```bash
 python eval/run_eval.py
+python eval/run_eval.py --runs 3   # reliability pass
 ```
 
 ---
@@ -162,3 +188,4 @@ python eval/run_eval.py
 
 - [Project Plan](docs/project_plan.md)
 - [Technical Design](docs/technical_design.md)
+- [Enhanced App Handoff](docs/storyforge_enhanced_handoff.md)

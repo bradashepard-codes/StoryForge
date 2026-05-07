@@ -1,18 +1,27 @@
 # Technical Design — StoryForge
-## Definition-of-Ready User Story Generator for Specialty Insurance Functional Leads
+## Two-Workflow Generative AI Application for Specialty Insurance Functional Leads
 
 ## 1. Project Overview
 
 **StoryForge** is a narrowly scoped Generative AI application designed for a **Functional Lead in a Specialty Insurance company** who manages a large portfolio of concurrent initiatives and must rapidly translate feature-level requirements into sprint-ready delivery artifacts.
 
-The application will accept a **single feature description** and generate a **Definition-of-Ready user story package** that includes:
-- a user story
-- structured acceptance criteria
+The application provides two independent generative workflows on a single feature input:
+
+**Workflow 1 — User Story Generation:** Accepts a feature description and generates a Definition-of-Ready user story package including:
+- a user story (As a / I want / so that)
+- structured acceptance criteria (Given/When/Then)
 - a Definition of Ready assessment
 - missing information / ambiguity flags
 - a confidence and escalation signal
 
-The system will use **Claude via API** to generate a context-engineered user story package and will be evaluated against a **human manual baseline** — the process a Functional Lead would follow without AI assistance.
+**Workflow 2 — Risk and Requirement Expansion:** Takes the same feature input and surfaces:
+- edge cases and boundary conditions
+- external dependencies
+- ambiguities and conflicting requirements
+- missing requirements (security, compliance, error handling, UX)
+- an overall severity assessment (low / medium / high)
+
+Both workflows use **Claude via API** with context-engineered prompts, structured output contracts, and Pydantic validation. Workflow 1 is evaluated against a human manual baseline. Workflow 2 is advisory and evaluated qualitatively.
 
 This project is intentionally designed to prioritize:
 - narrow workflow fit
@@ -32,7 +41,7 @@ This application is intended to improve the quality, speed, and consistency of t
 
 ## 3. Core Technical Scope Statement
 
-A Streamlit app that converts a single feature description into a Definition-of-Ready user story package with structured acceptance criteria, using Claude via API. The system is evaluated by comparing its outputs against a human manual baseline to measure time savings, consistency gains, and improvement in DoR compliance.
+A Streamlit application with Supabase authentication and persistent storage that converts a single feature description into two complementary outputs: (1) a Definition-of-Ready user story package with structured acceptance criteria, and (2) a structured risk and requirement expansion that surfaces edge cases, dependencies, ambiguities, and missing requirements. Both workflows use Claude via API with context-engineered prompts and Pydantic-validated JSON output. Workflow 1 is evaluated against a human manual baseline.
 
 ---
 
@@ -42,36 +51,37 @@ The following capabilities are explicitly in scope for this project:
 
 ### 4.1 User Workflow
 - One user: **Functional Lead**
-- One workflow: **single feature description → single DoR-ready user story package**
-- One unit of generation at a time
+- Two workflows on the same input: **User Story Generation** and **Risk and Requirement Expansion**
+- One unit of generation at a time per workflow
 - Human review before downstream use
 
 ### 4.2 Application Capabilities
-- Web-based Streamlit interface
-- Manual text input for one feature description
-- Submission to Anthropic Claude API
-- Generation of:
-  - user story
-  - structured acceptance criteria
-  - Definition of Ready assessment
-  - missing information / assumptions
-  - escalation or confidence flag
-- Single structured output panel displaying the context-engineered story package
-- Clear display of DoR status, missing information, and escalation signals
+- Web-based Streamlit interface with email/password authentication (Supabase)
+- Persistent project → feature → user story hierarchy (Supabase PostgreSQL with RLS)
+- AI-powered feature description enhancement (optional pre-step before story generation)
+- **Workflow 1 — User Story Generation:**
+  - Fan-out mode: decomposes one enhanced feature into 3–7 atomic user stories
+  - Single-story mode: generates one story from a full input form
+  - Outputs: user story, acceptance criteria, DoR assessment, missing information, assumptions, confidence, escalation flag
+- **Workflow 2 — Risk and Requirement Expansion:**
+  - Generates a structured risk analysis for any feature
+  - Outputs: edge cases, dependencies, ambiguities, missing requirements, severity summary
+- Source badges on all saved stories (AI-Generated, Manual, Edited)
 
 ### 4.3 Technical Design Elements
 - Python-based application
-- Streamlit UI
-- Anthropic API integration
-- JSON or schema-like structured response handling
+- Streamlit UI with `st.dialog` modal pattern for all create/generate actions
+- Anthropic Claude API integration (`claude-sonnet-4-6`)
+- Pydantic-validated structured JSON output for both workflows
+- Supabase auth and PostgreSQL database with row-level security
 - Local test dataset for evaluation
-- Human baseline vs StoryForge output comparison in evaluation layer
-- Evaluation support module or script
+- Human baseline vs. StoryForge output comparison in evaluation layer
 
 ### 4.4 Governance Controls
 - Human review boundary before sprint entry
 - Explicit escalation when requirements are too ambiguous
-- Logging of generated outputs for evaluation and review
+- Parse-or-reject enforcement — invalid outputs never shown to user
+- Logging of parse errors for diagnosis
 - Synthetic or manually created sample inputs only
 
 ---
@@ -104,11 +114,9 @@ The following are explicitly out of scope to keep the project aligned to capston
 - OCR or file parsing of uploaded business documents
 
 ### 5.4 Enterprise Platform Exclusions
-- Authentication / SSO
-- Role-based access control
+- SSO / enterprise identity providers
+- Role-based access control and multi-user collaboration
 - Production-grade observability stack
-- Database-backed persistence
-- Multi-user collaboration
 - Real-time workflow orchestration
 
 ### 5.5 UX Exclusions
@@ -133,16 +141,27 @@ A delivery-facing business lead responsible for:
 ## 7. End-to-End Workflow
 
 ## 7.1 Functional Workflow
-1. Functional Lead enters one feature description into the app
-2. App constructs a context-engineered prompt from the input
-3. Claude API generates the structured story package
-4. Application parses and displays the generated output
-5. User reviews the story, acceptance criteria, DoR assessment, and escalation flag
-6. User decides whether the story is:
-   - acceptable
-   - needs edits
-   - should be escalated due to ambiguity
-7. Evaluation module compares StoryForge outputs against human baseline using rubric scoring
+
+**Setup:**
+1. Functional Lead signs in and navigates to a project and feature
+
+**Workflow 1 — User Story Generation:**
+2. App constructs a context-engineered prompt from the feature input
+3. Claude API generates the structured story package (fan-out or single-story mode)
+4. Application parses and validates output against `StoryPackage` schema; displays on success
+5. User reviews story, acceptance criteria, DoR assessment, missing information, confidence, escalation flag
+6. User saves selected stories or escalates
+
+**Workflow 2 — Risk and Requirement Expansion:**
+7. User opens the Analyze Risks section on the same feature
+8. App constructs the risk expansion prompt with optional additional context
+9. Claude API generates a structured risk analysis
+10. Application parses and validates output against `RiskAnalysisPackage` schema; displays on success
+11. User reviews edge cases, dependencies, ambiguities, missing requirements, and severity
+12. User uses findings to strengthen the feature or flag issues before sprint planning
+
+**Evaluation:**
+13. Evaluation module compares Workflow 1 StoryForge outputs against human baseline using rubric scoring
 
 ---
 
@@ -211,18 +230,24 @@ Responsible for:
 ---
 
 ## 9.2 Prompt Builder Layer
-Responsible for constructing the context-engineered prompt.
+Responsible for constructing all context-engineered prompts.
 
-### Context-Engineered Prompt
-The single prompt variant used by the application. Reflects course concepts in context engineering.
-
+### Workflow 1 — Story Generation Prompt (`build_improved_prompt`, `build_fanout_prompt`)
 Design elements:
-- explicit role (Business Analyst in specialty insurance)
-- explicit task
-- constraints and output contract
-- Definition of Ready lens
-- few-shot examples
-- escalation instructions for ambiguous inputs
+- Role: Business Analyst in specialty insurance
+- Explicit task and output contract
+- Definition of Ready lens with six criteria
+- Few-shot example (input → full JSON output)
+- Escalation instructions for ambiguous inputs
+- Fan-out variant: decomposes feature into 3–7 atomic stories (JSON array)
+
+### Workflow 2 — Risk Expansion Prompt (`build_risk_expansion_prompt`)
+Design elements:
+- Role: QA Lead and requirements analyst in specialty insurance
+- Explicit task and output contract
+- Seven behavioral constraints (specificity, severity assignment, feature-specific findings)
+- Few-shot example (same broker policy change feature → full risk analysis JSON)
+- Output schema: edge_cases, dependencies, ambiguities, missing_requirements, severity_summary
 
 ---
 
@@ -249,14 +274,16 @@ Responsible for:
 - validating that all required fields are present
 - handling malformed or incomplete outputs
 
-### Target Output Structure
-- `user_story`
-- `acceptance_criteria`
-- `definition_of_ready_status`
-- `missing_information`
-- `assumptions`
-- `confidence`
-- `escalation_flag`
+### Workflow 1 — `StoryPackage` (Pydantic model)
+- `title`, `user_story`, `acceptance_criteria`
+- `definition_of_ready` (is_ready, criteria_met, criteria_missing)
+- `missing_information`, `assumptions`, `confidence`, `escalation_flag`
+
+### Workflow 2 — `RiskAnalysisPackage` (Pydantic model)
+- `edge_cases`, `dependencies`, `ambiguities`, `missing_requirements`
+- `severity_summary` (validated: low / medium / high)
+
+Both models use field validators. Outputs that fail validation are rejected and logged to `outputs/parse_errors.log`; the user sees an error state, not a malformed result.
 
 ---
 
@@ -466,11 +493,13 @@ These failure modes will be explicitly included in evaluation and governance wri
 ## 18. Success Criteria
 
 A successful technical implementation will demonstrate that:
-1. the app runs locally and is deployed at https://story-forge.streamlit.app/
-2. a user can submit one feature and receive a structured story package in under 30 seconds
-3. StoryForge outputs score measurably higher than human baseline stories on the evaluation rubric
-4. the system correctly flags cases where human escalation is appropriate
-5. time-to-draft is reduced from 30–60 minutes to under 3 minutes per story
+1. the app runs locally and accepts authenticated user sessions
+2. a user can submit one feature and receive a structured story package in under 30 seconds (Workflow 1)
+3. a user can submit the same feature and receive a structured risk analysis in under 30 seconds (Workflow 2)
+4. StoryForge Workflow 1 outputs score measurably higher than human baseline stories on the evaluation rubric
+5. the system correctly flags cases where human escalation is appropriate
+6. time-to-draft is reduced from 30–60 minutes to under 3 minutes per story
+7. all structured outputs are validated against Pydantic schemas before display; invalid outputs are never surfaced
 
 ## 19. Future Extensions (Not Part of Current Scope)
 

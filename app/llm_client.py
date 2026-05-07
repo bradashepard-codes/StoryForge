@@ -135,3 +135,21 @@ def call_improved(system_prompt: str, user_message: str) -> str | None:
     except Exception as e:
         print(f"[llm_client] Improved call failed: {e}")
         return None
+
+
+def call_risk_expansion(system_prompt: str, user_message: str) -> str | None:
+    """Send the risk expansion analysis prompt. Returns structured risk/edge case analysis."""
+    RISK_MAX_TOKENS = 2048
+    try:
+        client = _get_client()
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=RISK_MAX_TOKENS,
+            temperature=TEMPERATURE,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        return message.content[0].text
+    except Exception as e:
+        print(f"[llm_client] Risk expansion call failed: {e}")
+        return None
