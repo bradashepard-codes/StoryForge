@@ -1,25 +1,39 @@
 import streamlit as st
 from app.db import list_features, create_feature, update_feature, delete_feature, bulk_delete_features
-from app.llm_client import enhance_feature_description
+from app.llm_client import enhance_feature
 
 
-def _render_enhance_controls(description: str | None, enhanced_key: str, original_key: str, choice_key: str):
-    """Shared enhance/clear controls and side-by-side comparison. Returns the chosen description."""
-    description = description or ""
-
-    # Capture button return values first, handle logic after — ensures session state
-    # is read AFTER any updates so the comparison UI renders in the same rerun.
-    clicked_enhance = st.button(
-        "✨ Enhance Description", key=f"btn_enhance_{enhanced_key}",
-        use_container_width=True, disabled=not description,
+def _render_enhance_section(
+    current_desc: str,
+    current_biz: str,
+    current_iu: str,
+    enhanced_key: str,
+    choice_key: str,
+) -> tuple:
+    """
+    Renders the Enhance Feature button and side-by-side comparison.
+    Returns (final_desc, final_biz, final_iu, enhanced_choice).
+    enhanced_choice is True/False if the user made a version choice, None if not yet enhanced.
+    """
+    # Capture button click before reading session state so the result is available
+    # in the same rerun.
+    clicked = st.button(
+        "✨ Enhance Feature",
+        key=f"btn_enhance_{enhanced_key}",
+        use_container_width=True,
+        disabled=not current_desc,
     )
 
-    if clicked_enhance:
-        with st.spinner("Enhancing..."):
-            result = enhance_feature_description(description)
+    if clicked:
+        with st.spinner("Enhancing feature..."):
+            result = enhance_feature(current_desc, current_biz, current_iu)
         if result:
             st.session_state[enhanced_key] = result
-            st.session_state[original_key] = description
+            st.session_state[f"{enhanced_key}_orig"] = {
+                "description": current_desc,
+                "business_objective": current_biz,
+                "intended_user": current_iu,
+            }
         else:
             st.error("Enhancement failed. Check your API key.")
 
@@ -28,61 +42,76 @@ def _render_enhance_controls(description: str | None, enhanced_key: str, origina
     if enhanced:
         if st.button("Clear Enhancement", key=f"btn_clear_{enhanced_key}", use_container_width=True):
             st.session_state.pop(enhanced_key, None)
-            st.session_state.pop(original_key, None)
+            st.session_state.pop(f"{enhanced_key}_orig", None)
+            st.session_state.pop(choice_key, None)
             enhanced = None
 
-    if enhanced:
-        st.markdown("**Choose a description:**")
-        col_orig, col_enh = st.columns(2)
-        with col_orig:
-            st.markdown("**Original**")
-            st.info(st.session_state.get(original_key, description))
-        with col_enh:
-            st.markdown("**Enhanced**")
-            st.success(enhanced)
-        choice = st.radio("Use which version?", ["Enhanced", "Original"],
-                          horizontal=True, key=choice_key)
-        return enhanced if choice == "Enhanced" else st.session_state.get(original_key, description)
+    if not enhanced:
+        return current_desc, current_biz, current_iu, None
 
-    return description
+    original = st.session_state.get(f"{enhanced_key}_orig", {})
+
+    st.markdown("**Choose a version:**")
+    col_orig, col_enh = st.columns(2)
+    with col_orig:
+        st.markdown("**Original**")
+        with st.container(border=True):
+            st.markdown(f"**Description**\n\n{original.get('description', '')}")
+            if original.get("business_objective"):
+                st.markdown(f"**Business Objective**\n\n{original.get('business_objective')}")
+            if original.get("intended_user"):
+                st.markdown(f"**Intended User**\n\n{original.get('intended_user')}")
+    with col_enh:
+        st.markdown("**Enhanced**")
+        with st.container(border=True):
+            st.markdown(f"**Description**\n\n{enhanced.get('description', '')}")
+            if enhanced.get("business_objective"):
+                st.markdown(f"**Business Objective**\n\n{enhanced.get('business_objective')}")
+            if enhanced.get("intended_user"):
+                st.markdown(f"**Intended User**\n\n{enhanced.get('intended_user')}")
+
+    choice = st.radio("Use which version?", ["Enhanced", "Original"], horizontal=True, key=choice_key)
+
+    if choice == "Enhanced":
+        return enhanced.get("description", ""), enhanced.get("business_objective", ""), enhanced.get("intended_user", ""), True
+    else:
+        orig = st.session_state.get(f"{enhanced_key}_orig", {})
+        return orig.get("description", ""), orig.get("business_objective", ""), orig.get("intended_user", ""), False
 
 
 @st.dialog("Add Feature")
 def _add_feature_modal(project_id: str, user_id: str):
     name = st.text_input("Feature Name")
-    description = st.text_area("Description", height=100, key="modal_feat_desc")
-
-    final_description = _render_enhance_controls(
-        description=description,
-        enhanced_key="modal_enhanced_description",
-        original_key="modal_original_description",
-        choice_key="modal_desc_choice",
-    )
-
-    business_objective = st.text_input("Business Objective (optional)")
+    description = st.text_area("Description", height=100)
+    biz_obj = st.text_input("Business Objective (optional)")
     intended_user = st.text_input("Intended End User (optional)")
+
+    final_desc, final_biz, final_iu, enhanced_choice = _render_enhance_section(
+        description, biz_obj, intended_user,
+        enhanced_key="modal_add_enhanced",
+        choice_key="modal_add_choice",
+    )
 
     col_save, col_cancel = st.columns(2)
     with col_save:
         if st.button("Add Feature", use_container_width=True, type="primary"):
             if not name:
                 st.error("Feature name is required.")
-            elif not final_description:
+            elif not final_desc:
                 st.error("Description is required.")
             else:
-                is_enhanced = st.session_state.get("modal_desc_choice") == "Enhanced"
                 create_feature(
-                    project_id, name, final_description, user_id,
-                    is_enhanced=is_enhanced,
-                    business_objective=business_objective,
-                    intended_user=intended_user,
+                    project_id, name, final_desc, user_id,
+                    is_enhanced=enhanced_choice is True,
+                    business_objective=final_biz,
+                    intended_user=final_iu,
                 )
-                for key in ["modal_enhanced_description", "modal_original_description", "modal_desc_choice"]:
+                for key in ["modal_add_enhanced", "modal_add_enhanced_orig", "modal_add_choice"]:
                     st.session_state.pop(key, None)
                 st.rerun()
     with col_cancel:
         if st.button("Cancel", use_container_width=True):
-            for key in ["modal_enhanced_description", "modal_original_description", "modal_desc_choice"]:
+            for key in ["modal_add_enhanced", "modal_add_enhanced_orig", "modal_add_choice"]:
                 st.session_state.pop(key, None)
             st.rerun()
 
@@ -91,18 +120,15 @@ def _add_feature_modal(project_id: str, user_id: str):
 def _edit_feature_modal(feature: dict):
     fid = feature["id"]
     new_name = st.text_input("Feature Name", value=feature["name"])
-    current_desc = feature.get("description", "")
-    new_desc = st.text_area("Description", value=current_desc, height=100, key=f"modal_edit_desc_{fid}")
+    new_desc = st.text_area("Description", value=feature.get("description", ""), height=100)
+    new_biz = st.text_input("Business Objective (optional)", value=feature.get("business_objective", ""))
+    new_iu = st.text_input("Intended End User (optional)", value=feature.get("intended_user", ""))
 
-    final_desc = _render_enhance_controls(
-        description=new_desc,
+    final_desc, final_biz, final_iu, enhanced_choice = _render_enhance_section(
+        new_desc, new_biz, new_iu,
         enhanced_key="modal_edit_enhanced",
-        original_key="modal_edit_original",
         choice_key="modal_edit_choice",
     )
-
-    new_biz_obj = st.text_input("Business Objective (optional)", value=feature.get("business_objective", ""))
-    new_intended_user = st.text_input("Intended End User (optional)", value=feature.get("intended_user", ""))
 
     col_save, col_cancel = st.columns(2)
     with col_save:
@@ -112,20 +138,24 @@ def _edit_feature_modal(feature: dict):
             elif not final_desc:
                 st.error("Description is required.")
             else:
-                is_enhanced = st.session_state.get("modal_edit_choice") == "Enhanced"
+                # Preserve existing is_enhanced if the user didn't make a new choice
+                if enhanced_choice is not None:
+                    is_enhanced = enhanced_choice
+                else:
+                    is_enhanced = feature.get("is_enhanced", False)
                 update_feature(fid, {
                     "name": new_name,
                     "description": final_desc,
                     "is_enhanced": is_enhanced,
-                    "business_objective": new_biz_obj,
-                    "intended_user": new_intended_user,
+                    "business_objective": final_biz,
+                    "intended_user": final_iu,
                 })
-                for key in ["modal_edit_enhanced", "modal_edit_original", "modal_edit_choice"]:
+                for key in ["modal_edit_enhanced", "modal_edit_enhanced_orig", "modal_edit_choice"]:
                     st.session_state.pop(key, None)
                 st.rerun()
     with col_cancel:
         if st.button("Cancel", use_container_width=True):
-            for key in ["modal_edit_enhanced", "modal_edit_original", "modal_edit_choice"]:
+            for key in ["modal_edit_enhanced", "modal_edit_enhanced_orig", "modal_edit_choice"]:
                 st.session_state.pop(key, None)
             st.rerun()
 

@@ -40,8 +40,9 @@ def call_baseline(prompt: str) -> str | None:
         return None
 
 
-def enhance_feature_description(description: str) -> str | None:
-    """Enhance a feature description without losing any original context."""
+def enhance_feature(description: str, business_objective: str = "", intended_user: str = "") -> dict | None:
+    """Enhance description, business objective, and intended user as a unit. Infers missing fields."""
+    import json as _json
     try:
         client = _get_client()
         message = client.messages.create(
@@ -50,16 +51,27 @@ def enhance_feature_description(description: str) -> str | None:
             temperature=0.4,
             system=(
                 "You are a business analyst specializing in specialty insurance software delivery. "
-                "Your job is to enhance feature descriptions written by Functional Leads. "
-                "Preserve all original intent and context. Improve clarity, specificity, and completeness. "
-                "Do not invent business rules or constraints not implied by the original. "
-                "Return only the enhanced description — no preamble, no explanation."
+                "Given a feature's fields, return improved versions of all three. Rules:\n"
+                "- description: improve clarity, specificity, and completeness. Preserve all original intent. Do not invent constraints.\n"
+                "- business_objective: if provided, sharpen it to one concise sentence. If empty, infer from the description.\n"
+                "- intended_user: if provided, normalize to a short role name (e.g. 'Broker', 'Underwriter'). If empty, infer from the description.\n"
+                "Return only a valid JSON object with exactly these keys: description, business_objective, intended_user. "
+                "No preamble, no explanation."
             ),
-            messages=[{"role": "user", "content": f"Enhance this feature description:\n\n{description}"}],
+            messages=[{"role": "user", "content": (
+                f"Description: {description}\n"
+                f"Business Objective: {business_objective or 'Not provided'}\n"
+                f"Intended User: {intended_user or 'Not provided'}"
+            )}],
         )
-        return message.content[0].text.strip()
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return _json.loads(raw.strip())
     except Exception as e:
-        print(f"[llm_client] enhance_feature_description failed: {e}")
+        print(f"[llm_client] enhance_feature failed: {e}")
         return None
 
 
