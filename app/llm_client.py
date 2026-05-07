@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = "claude-sonnet-4-6"
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 4096
 TEMPERATURE = 0.3
 
@@ -68,8 +69,8 @@ def suggest_fanout_context(feature_name: str, feature_description: str) -> dict 
     try:
         client = _get_client()
         message = client.messages.create(
-            model=MODEL,
-            max_tokens=512,
+            model=HAIKU_MODEL,
+            max_tokens=256,
             temperature=0.3,
             system=(
                 "You are an expert Business Analyst specializing in specialty insurance delivery workflows. "
@@ -101,12 +102,12 @@ def suggest_fanout_context(feature_name: str, feature_description: str) -> dict 
 
 
 def call_fanout(system_prompt: str, user_message: str) -> str | None:
-    """Send the fan-out decomposition prompt. Uses a larger token budget for multiple stories."""
-    FANOUT_MAX_TOKENS = 8192
+    """Send the fan-out decomposition prompt."""
+    FANOUT_MAX_TOKENS = 4096
     try:
         client = _get_client()
         message = client.messages.create(
-            model=MODEL,
+            model=HAIKU_MODEL,
             max_tokens=FANOUT_MAX_TOKENS,
             temperature=TEMPERATURE,
             system=system_prompt,

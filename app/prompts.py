@@ -93,15 +93,15 @@ def build_fanout_prompt(feature_input: dict) -> tuple[str, str]:
 Your task is to decompose a feature description into a set of atomic user stories for Agile sprint planning.
 
 Rules:
-- Decompose the feature into 3–7 stories. Each story must be independently deliverable and testable.
+- Decompose the feature into 3–5 stories. Each story must be independently deliverable and testable.
 - Scope each story as small as possible — one discrete behaviour or capability per story.
 - Do not pad with trivial stories. Do not merge stories that address different behaviours.
-- Write a concise title for each story: 4–7 words, no punctuation, suitable as a card name in a sprint board (e.g. "Broker Policy Change Submission").
+- Write a concise title for each story: 4–7 words, no punctuation, suitable as a card name in a sprint board.
 - Write each user story in the format: As a [persona], I want [goal], so that [business value].
-- Write acceptance criteria in Given/When/Then format. Each criterion must be specific and testable.
+- Write 2–3 acceptance criteria per story in Given/When/Then format. Each criterion must be specific and testable.
 - Assess the Definition of Ready for each story using the six criteria below.
-- List any information that is missing or ambiguous per story.
-- List any assumptions you made per story.
+- List only the most critical missing information (max 2 items). Omit if none.
+- List only explicit assumptions made (max 2 items). Omit if none.
 - Assign a confidence level: low, medium, or high.
 - Set escalation_flag to true for any story where the input is too ambiguous to produce testable criteria.
 
