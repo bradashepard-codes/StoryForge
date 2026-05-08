@@ -38,19 +38,20 @@ Converts a feature description into a Definition-of-Ready user story package:
 
 **Time reduction: 30–60 minutes (manual) → under 3 minutes**
 
-### Workflow 2 — Risk and Requirement Expansion
+### Workflow 2 — Risk Signal Analysis
 
-Takes the same feature input and surfaces what the user story generation cannot detect:
+After stories are generated, surface the risk signals that story generation cannot produce:
 
 | Output | Description |
 |---|---|
-| Edge cases | Boundary conditions, error scenarios, timing issues |
-| Dependencies | External systems, teams, APIs, data sources |
-| Ambiguities | Unclear terminology, conflicting requirements |
-| Missing requirements | Security, compliance, error handling, UX gaps |
-| Overall severity | high / medium / low risk assessment |
+| Edge cases | Boundary conditions, error scenarios, race conditions not covered by acceptance criteria |
+| Dependencies | External systems, teams, APIs, and data sources this story relies on |
 
-Both workflows operate independently and can be used together or separately before sprint planning.
+Two modes:
+- **🔬 Risk Signals** — analyze one story inline with a single button click
+- **🕵️ Risk Sweep** — analyze all stories in a feature in one pass
+
+Results render inline within each story card. Only non-duplicative signals are returned — ambiguities and missing requirements are intentionally excluded because the `StoryPackage` already surfaces those via `missing_information` and `criteria_missing`.
 
 ---
 
@@ -60,7 +61,7 @@ Both workflows operate independently and can be used together or separately befo
 |---|---|
 | UI | Streamlit |
 | Language | Python |
-| LLM Provider | Anthropic Claude API (`claude-sonnet-4-6`) |
+| LLM Provider | Anthropic Claude API (`claude-sonnet-4-6`, `claude-haiku-4-5`) |
 | Auth + Database | Supabase (email/password auth, PostgreSQL with RLS) |
 | Validation | Pydantic |
 | Environment | `.env` / `python-dotenv` |
@@ -73,14 +74,15 @@ Both workflows operate independently and can be used together or separately befo
 ```text
 StoryForge/
 ├── app/
-│   ├── dashboard_view.py     # Project list with Add/Edit modals
+│   ├── dashboard_view.py     # Project list with Add/Edit modals and feature/story counts
 │   ├── db.py                 # All Supabase queries
 │   ├── dor_checker.py        # DoR compliance utilities
-│   ├── feature_view.py       # Story list, fan-out, risk analysis, single story modal
-│   ├── llm_client.py         # All LLM calls
+│   ├── feature_view.py       # Story list, fan-out, Risk Signals, Risk Sweep, Edit Story modal
+│   ├── llm_client.py         # All LLM calls (Sonnet + Haiku)
 │   ├── login_view.py         # Sign in / sign up
+│   ├── main.py               # App routing and session restore
 │   ├── parser.py             # Pydantic models and output parsers
-│   ├── project_view.py       # Feature list with Add/Edit/Bulk Delete modals
+│   ├── project_view.py       # Feature list with Add/Edit/Enhance/Bulk Delete modals
 │   ├── prompts.py            # All prompt builders
 │   └── ui.py                 # Shared UI helpers
 ├── eval/
@@ -136,9 +138,10 @@ python3 -m streamlit run enhanced_app.py
 1. Sign in or create an account
 2. Create a project and add a feature
 3. Open a feature to access both workflows:
-   - **Generate All Stories** — fan-out decomposition (requires AI-enhanced feature description)
-   - **Generate New User Story** — single story via modal
-   - **Analyze Risks & Requirements** — risk expansion for the same feature
+   - **🚀 Generate All Stories** — fan-out decomposition into 3–5 atomic stories (requires AI-enhanced feature)
+   - **✍️ Add Story Manually** — generate a single story via modal
+   - **🔬 Risk Signals** — per-story edge cases and dependencies (button on each story card)
+   - **🕵️ Risk Sweep** — analyze all stories in one pass (header button)
 4. Review all outputs before sprint entry
 
 **Human review is required before any output is treated as sprint-ready.**

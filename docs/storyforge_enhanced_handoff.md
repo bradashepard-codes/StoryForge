@@ -3,7 +3,7 @@
 **Branch:** `feature/storyforge-enhanced`
 **Entry point:** `python3 -m streamlit run enhanced_app.py`
 **Last updated:** May 2026
-**Status:** This IS the capstone deliverable — two workflows built, story edit workflow not yet built
+**Status:** This IS the capstone deliverable — two workflows built and complete
 
 ---
 
@@ -35,9 +35,9 @@ StoryForge Enhanced is the **final capstone deliverable**. Scope change approved
 - Navigate into a feature to view its stories
 - Features flagged as `is_enhanced = true` when the user accepts the AI-enhanced description — this flag unlocks fan-out story generation
 
-### AI Description Enhancement
+### AI Feature Enhancement
 - Available in both Add Feature and Edit Feature modals
-- User enters a description → clicks "✨ Enhance Description" → LLM refines it (preserves all original intent, improves clarity and specificity)
+- User enters description, business objective (optional), and intended user (optional) → clicks "✨ Enhance Feature" → LLM refines all three fields simultaneously (improves clarity and specificity; infers missing BO/IU from the description; preserves all original intent)
 - Side-by-side comparison of Original vs. Enhanced with a radio selector
 - User chooses which version to save; their choice sets `is_enhanced` on the feature record
 - If the user accepts Enhanced: `is_enhanced = true` → unlocks fan-out generation on that feature
@@ -47,11 +47,11 @@ StoryForge Enhanced is the **final capstone deliverable**. Scope change approved
 Only available when `feature.is_enhanced = true`.
 
 **Idle phase:**
-1. When the user opens an enhanced feature, the system automatically calls the LLM to infer context (business objective, intended user, business rules, notes) from the feature name and description
-2. Inferred context pre-populates a form — the user can edit any field before generating
+1. When the user opens an enhanced feature, the system automatically calls the LLM (Haiku) to infer Business Rules and Notes from the feature name and description; Business Objective and Intended User are read directly from the feature record
+2. Inferred context pre-populates editable fields in the modal — the user can refine any field before generating
 3. Business Rules and Additional Notes use Preview/Edit tabs with markdown rendering (supports numbered lists and bullets returned by the LLM)
-4. Business Objective and Intended User are required fields
-5. User clicks "🚀 Generate All Stories" → LLM decomposes the feature into 3–7 atomic user stories (8192 token budget)
+4. Business Objective and Intended User are required; a warning is shown if either is missing on the feature, with fallback input fields
+5. User clicks "🚀 Generate All Stories" → LLM (Haiku) decomposes the feature into 3–5 atomic user stories (~10–18s)
 6. All generated stories are parsed and validated against the `StoryPackage` schema
 
 **Preview phase:**
@@ -64,26 +64,29 @@ Only available when `feature.is_enhanced = true`.
 
 ### Single Story Generation (Feature View)
 - Available on all features regardless of `is_enhanced`
-- Opened via "**+ New Story**" button which triggers an `st.dialog` modal
+- Opened via the **✍️ Add Story Manually** button which triggers an `st.dialog` modal
 - Fields: feature title, description, business objective, intended user, business rules (optional), notes (optional)
 - Generates one story using the same context-engineered prompt as the capstone
 - Saved with `source = "A"` (AI-Generated)
 
-### Risk and Requirement Expansion (Feature View)
+### Risk Signal Analysis (Feature View)
 - Available on all features regardless of `is_enhanced`
-- Located between the fan-out section and the single story button
-- User optionally provides: business objective, intended user, business rules, notes
-- Generates a `RiskAnalysisPackage` via `build_risk_expansion_prompt()` → `call_risk_expansion()` → `parse_risk_expansion_output()`
-- Displays: overall severity (red/orange/green), edge cases, dependencies, ambiguities, missing requirements
-- Results cached in `st.session_state[f"risk_analysis_{feature_id}"]` — cleared on back navigation
+- Two entry points:
+  - **🔬 Risk Signals** button on each story card (between Edit and Delete) — fires a discrete Haiku call for that story only
+  - **🕵️ Risk Sweep** button in the feature header — runs analysis across all stories in sequence, skipping any already analyzed
+- Returns only `edge_cases` and `dependencies` — the two signal types not already surfaced by the `StoryPackage` (ambiguities and missing requirements are intentionally excluded to avoid duplication)
+- Generates a `RiskSignalsPackage` via `build_risk_signals_prompt()` → `call_risk_signals()` → `parse_risk_signals_output()`
+- Displays inline within the story card below Assumptions; clearable per story via "Clear Signals"
+- Results cached in `st.session_state[f"risk_signals_{story_id}"]` — cleared on back navigation
 - No database save — analysis is advisory and ephemeral
 
 ### Story Display
 - All stories listed as expandable cards with source badge:
   - ⭐ AI-Generated (`source = "A"`)
   - ✍️ Manual (`source = "M"`)
-  - ✏️ Edited (`source = "E"`) — reserved, not yet in use
-- Each expanded story shows: user story, acceptance criteria, DoR status (green/red), criteria met/missing, missing information, assumptions, confidence, escalation flag
+  - ✏️ Edited (`source = "E"`)
+- Each expanded story shows: user story, acceptance criteria, DoR status (green/red), criteria met/missing, missing information, assumptions, confidence, escalation flag, and Risk Signals section (if analyzed)
+- Edit story available inline via Edit Story modal (`st.dialog`); saves all story fields, sets `source = "E"`
 - Delete story available inline
 
 ---
@@ -92,8 +95,8 @@ Only available when `feature.is_enhanced = true`.
 
 | Feature | Notes |
 |---|---|
-| Story edit workflow | `source = "E"` is reserved in schema but edit modal not built |
 | Story export | No export to Jira, CSV, or other formats |
+| Risk signal persistence | Risk Signals are ephemeral (session state only); not saved to Supabase |
 | Multi-user collaboration | RLS is per-user; no sharing or team access |
 | Project archiving | No soft delete — delete is permanent |
 
@@ -129,11 +132,10 @@ Relevant session state keys:
 | `fanout_stories` | list | Generated story packages pending save |
 | `fanout_count` | int | Number of generated stories in preview |
 | `fanout_sel_{i}` | bool | Checkbox state for story i in preview |
-| `fanout_biz_obj` | str | Business objective form field |
-| `fanout_intended_user` | str | Intended user form field |
-| `fanout_biz_rules` | str | Business rules form field |
-| `fanout_notes` | str | Notes form field |
-| `risk_analysis_{feature_id}` | dict | Cached `RiskAnalysisPackage` for this feature — cleared on back navigation |
+| `fanout_biz_rules` | str | Business rules form field (Haiku-inferred, user-editable) |
+| `fanout_notes` | str | Notes form field (Haiku-inferred, user-editable) |
+| `risk_signals_{story_id}` | dict | Cached `RiskSignalsPackage` for this story — cleared on back navigation |
+| `run_risk_sweep` | bool | Transient flag that triggers bulk Risk Sweep after stories are fetched |
 
 ### UI Pattern
 All create/edit actions use `st.dialog` modals. Key rule: **never call `st.rerun()` inside a modal helper** — button clicks already trigger reruns, and `st.rerun()` inside `st.dialog` closes the modal.
@@ -174,11 +176,11 @@ RLS: users see only stories on their own features
 | `app/login_view.py` | Sign in / sign up with tabbed layout |
 | `app/dashboard_view.py` | Project list, Add/Edit modals, feature and story counts per card |
 | `app/project_view.py` | Feature list, Add/Edit/Bulk Delete modals, enhance workflow |
-| `app/feature_view.py` | Story list, fan-out section, single story generation form |
+| `app/feature_view.py` | Story list, fan-out section, single story modal, Edit Story modal, per-story Risk Signals, bulk Risk Sweep |
 | `app/db.py` | All Supabase queries — auth, projects, features, stories |
-| `app/prompts.py` | `build_improved_prompt()`, `build_fanout_prompt()`, `build_risk_expansion_prompt()` |
-| `app/llm_client.py` | `call_improved()`, `call_fanout()`, `call_risk_expansion()`, `enhance_feature_description()`, `suggest_fanout_context()` |
-| `app/parser.py` | `StoryPackage`, `RiskAnalysisPackage` Pydantic models; `parse_output()`, `parse_fanout_output()`, `parse_risk_expansion_output()` |
+| `app/prompts.py` | `build_improved_prompt()`, `build_fanout_prompt()`, `build_risk_signals_prompt()`, `build_risk_expansion_prompt()` (eval only) |
+| `app/llm_client.py` | `call_improved()`, `call_fanout()`, `call_risk_signals()`, `enhance_feature()`, `suggest_fanout_context()`, `call_risk_expansion()` (eval only) |
+| `app/parser.py` | `StoryPackage`, `RiskSignalsPackage`, `RiskAnalysisPackage` Pydantic models; `parse_output()`, `parse_fanout_output()`, `parse_risk_signals_output()`, `parse_risk_expansion_output()` |
 
 ---
 
@@ -186,11 +188,13 @@ RLS: users see only stories on their own features
 
 | Function | Model | Temp | Max Tokens | Purpose |
 |---|---|---|---|---|
-| `enhance_feature_description()` | claude-sonnet-4-6 | 0.4 | 512 | Refine feature description |
-| `suggest_fanout_context()` | claude-sonnet-4-6 | 0.3 | 512 | Infer fanout context from feature |
+| `enhance_feature()` | claude-sonnet-4-6 | 0.4 | 512 | Enhance all three feature fields simultaneously |
+| `suggest_fanout_context()` | claude-haiku-4-5 | 0.3 | 256 | Infer business rules and notes from feature description |
 | `call_improved()` | claude-sonnet-4-6 | 0.3 | 4096 | Single story generation (Workflow 1) |
-| `call_fanout()` | claude-sonnet-4-6 | 0.3 | 8192 | Fan-out: 3–7 stories from one feature (Workflow 1) |
-| `call_risk_expansion()` | claude-sonnet-4-6 | 0.3 | 2048 | Risk and requirement expansion analysis (Workflow 2) |
+| `call_fanout()` | claude-haiku-4-5 | 0.3 | 4096 | Fan-out: 3–5 stories from one feature (Workflow 1) |
+| `call_risk_signals()` | claude-haiku-4-5 | 0.3 | 512 | Per-story edge cases + dependencies (Workflow 2) |
+| `call_baseline()` | claude-sonnet-4-6 | 0.3 | 4096 | Baseline prompt — eval harness only |
+| `call_risk_expansion()` | claude-sonnet-4-6 | 0.3 | 2048 | Full 4-category risk analysis — eval harness only |
 
 ---
 

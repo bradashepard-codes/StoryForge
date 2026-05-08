@@ -14,14 +14,13 @@ The application provides two independent generative workflows on a single featur
 - missing information / ambiguity flags
 - a confidence and escalation signal
 
-**Workflow 2 — Risk and Requirement Expansion:** Takes the same feature input and surfaces:
-- edge cases and boundary conditions
-- external dependencies
-- ambiguities and conflicting requirements
-- missing requirements (security, compliance, error handling, UX)
-- an overall severity assessment (low / medium / high)
+**Workflow 2 — Risk Signal Analysis:** For each generated user story, surfaces the two risk signal types not already captured in the `StoryPackage`:
+- edge cases and boundary conditions not covered by acceptance criteria
+- external dependencies (systems, APIs, teams, data sources)
 
-Both workflows use **Claude via API** with context-engineered prompts, structured output contracts, and Pydantic validation. Workflow 1 is evaluated against a human manual baseline. Workflow 2 is advisory and evaluated qualitatively.
+Delivered at the story level via per-story **🔬 Risk Signals** button and a bulk **🕵️ Risk Sweep** for the full feature. Ambiguities and missing requirements are intentionally excluded — the `StoryPackage` already surfaces those via `missing_information` and `criteria_missing`.
+
+Both workflows use **Claude via API** (Sonnet for quality-critical generation; Haiku for speed-sensitive or bounded tasks) with context-engineered prompts, structured output contracts, and Pydantic validation. Workflow 1 is evaluated against a human manual baseline. Workflow 2 is advisory and ephemeral.
 
 This project is intentionally designed to prioritize:
 - narrow workflow fit
@@ -60,12 +59,12 @@ The following capabilities are explicitly in scope for this project:
 - Persistent project → feature → user story hierarchy (Supabase PostgreSQL with RLS)
 - AI-powered feature description enhancement (optional pre-step before story generation)
 - **Workflow 1 — User Story Generation:**
-  - Fan-out mode: decomposes one enhanced feature into 3–7 atomic user stories
+  - Fan-out mode: decomposes one enhanced feature into 3–5 atomic user stories
   - Single-story mode: generates one story from a full input form
   - Outputs: user story, acceptance criteria, DoR assessment, missing information, assumptions, confidence, escalation flag
-- **Workflow 2 — Risk and Requirement Expansion:**
-  - Generates a structured risk analysis for any feature
-  - Outputs: edge cases, dependencies, ambiguities, missing requirements, severity summary
+- **Workflow 2 — Risk Signal Analysis:**
+  - Per-story analysis via 🔬 Risk Signals button or bulk 🕵️ Risk Sweep across all stories
+  - Outputs: edge cases and dependencies only (non-duplicative signals; ambiguities and missing requirements intentionally excluded as they duplicate `StoryPackage` fields)
 - Source badges on all saved stories (AI-Generated, Manual, Edited)
 
 ### 4.3 Technical Design Elements
@@ -152,13 +151,13 @@ A delivery-facing business lead responsible for:
 5. User reviews story, acceptance criteria, DoR assessment, missing information, confidence, escalation flag
 6. User saves selected stories or escalates
 
-**Workflow 2 — Risk and Requirement Expansion:**
-7. User opens the Analyze Risks section on the same feature
-8. App constructs the risk expansion prompt with optional additional context
-9. Claude API generates a structured risk analysis
-10. Application parses and validates output against `RiskAnalysisPackage` schema; displays on success
-11. User reviews edge cases, dependencies, ambiguities, missing requirements, and severity
-12. User uses findings to strengthen the feature or flag issues before sprint planning
+**Workflow 2 — Risk Signal Analysis:**
+7. User clicks 🔬 Risk Signals on a story card, or 🕵️ Risk Sweep in the feature header
+8. App constructs the risk signals prompt scoped to that story's title, user story, and acceptance criteria
+9. Claude API (Haiku) generates edge cases and dependencies not covered by the acceptance criteria
+10. Application parses and validates output against `RiskSignalsPackage` schema; displays inline on success
+11. User reviews edge cases and dependencies rendered within the story card
+12. Risk Sweep mode runs steps 8–11 for each story in sequence, skipping already-analyzed stories
 
 **Evaluation:**
 13. Evaluation module compares Workflow 1 StoryForge outputs against human baseline using rubric scoring
@@ -241,13 +240,15 @@ Design elements:
 - Escalation instructions for ambiguous inputs
 - Fan-out variant: decomposes feature into 3–7 atomic stories (JSON array)
 
-### Workflow 2 — Risk Expansion Prompt (`build_risk_expansion_prompt`)
+### Workflow 2 — Risk Signals Prompt (`build_risk_signals_prompt`)
 Design elements:
-- Role: QA Lead and requirements analyst in specialty insurance
-- Explicit task and output contract
-- Seven behavioral constraints (specificity, severity assignment, feature-specific findings)
-- Few-shot example (same broker policy change feature → full risk analysis JSON)
-- Output schema: edge_cases, dependencies, ambiguities, missing_requirements, severity_summary
+- Role: QA Lead in specialty insurance
+- Explicitly scoped to non-duplicative signals only: edge cases and dependencies
+- Story acceptance criteria passed as context — model reasons about what is NOT covered
+- Instruction to avoid generic best practices; findings must be specific to this story
+- Output schema: edge_cases, dependencies (2–4 items each; empty array if none apply)
+
+Note: `build_risk_expansion_prompt` (full 4-category risk analysis) is retained in `prompts.py` for use by the evaluation harness.
 
 ---
 
@@ -279,11 +280,14 @@ Responsible for:
 - `definition_of_ready` (is_ready, criteria_met, criteria_missing)
 - `missing_information`, `assumptions`, `confidence`, `escalation_flag`
 
-### Workflow 2 — `RiskAnalysisPackage` (Pydantic model)
+### Workflow 2 — `RiskSignalsPackage` (Pydantic model)
+- `edge_cases`, `dependencies`
+
+### Eval only — `RiskAnalysisPackage` (Pydantic model)
 - `edge_cases`, `dependencies`, `ambiguities`, `missing_requirements`
 - `severity_summary` (validated: low / medium / high)
 
-Both models use field validators. Outputs that fail validation are rejected and logged to `outputs/parse_errors.log`; the user sees an error state, not a malformed result.
+All models use field validators. Outputs that fail validation are rejected and logged to `outputs/parse_errors.log`; the user sees an error state, not a malformed result.
 
 ---
 
@@ -340,34 +344,41 @@ Suggested flat-file storage:
 
 ---
 
-## 11. Proposed Repository Structure
+## 11. Repository Structure
 
 ```text
-storyforge/
+StoryForge/
 ├── app/
-│   ├── main.py
-│   ├── ui.py
-│   ├── prompts.py
-│   ├── llm_client.py
-│   ├── parser.py
-│   └── dor_checker.py
+│   ├── dashboard_view.py     # Project list with Add/Edit modals and counts
+│   ├── db.py                 # All Supabase queries — auth, projects, features, stories
+│   ├── dor_checker.py        # DoR compliance utilities
+│   ├── feature_view.py       # Story list, fan-out, Risk Signals, Risk Sweep, Edit Story modal
+│   ├── llm_client.py         # All LLM calls (Sonnet + Haiku)
+│   ├── login_view.py         # Sign in / sign up
+│   ├── main.py               # App routing and session restore
+│   ├── parser.py             # Pydantic models and output parsers
+│   ├── project_view.py       # Feature list with Add/Edit/Enhance/Bulk Delete modals
+│   ├── prompts.py            # All prompt builders
+│   └── ui.py                 # Shared UI helpers
 ├── eval/
-│   ├── run_eval.py
-│   ├── rubric.py
-│   ├── compare_results.py
-│   └── test_cases.json
+│   ├── run_eval.py           # Automated evaluation runner (--runs flag for reliability)
+│   ├── rubric.py             # Five-dimension scoring rubric
+│   ├── compare_results.py    # Dimension-level delta analysis
+│   └── test_cases.json       # 16 synthetic test cases
 ├── outputs/
 │   ├── baseline_results.json
 │   ├── improved_results.json
-│   └── eval_scores.csv
+│   ├── eval_scores.csv
+│   └── parse_errors.log
 ├── docs/
 │   ├── technical_design.md
 │   ├── project_plan.md
-│   └── evaluation_notes.md
+│   ├── storyforge_enhanced_handoff.md
+│   └── presentation.md
+├── enhanced_app.py           # Entry point
 ├── .env.example
 ├── requirements.txt
-├── README.md
-└── streamlit_app.py
+└── README.md
 ```
 
 ## 12. Technology Stack
@@ -376,7 +387,7 @@ storyforge/
 - **Language:** Python
 - **UI Framework:** Streamlit
 - **IDE:** Visual Studio Code
-- **LLM Provider:** Anthropic Claude API
+- **LLM Provider:** Anthropic Claude API (`claude-sonnet-4-6` for quality-critical tasks; `claude-haiku-4-5` for speed-sensitive bounded tasks)
 - **Version Control:** GitHub
 - **Environment Management:** `.env` file for API key
 - **Dependency Management:** `requirements.txt`
@@ -495,7 +506,7 @@ These failure modes will be explicitly included in evaluation and governance wri
 A successful technical implementation will demonstrate that:
 1. the app runs locally and accepts authenticated user sessions
 2. a user can submit one feature and receive a structured story package in under 30 seconds (Workflow 1)
-3. a user can submit the same feature and receive a structured risk analysis in under 30 seconds (Workflow 2)
+3. a user can click 🔬 Risk Signals on a story and receive edge cases and dependencies in under 10 seconds; 🕵️ Risk Sweep completes across 3–5 stories in under 30 seconds (Workflow 2)
 4. StoryForge Workflow 1 outputs score measurably higher than human baseline stories on the evaluation rubric
 5. the system correctly flags cases where human escalation is appropriate
 6. time-to-draft is reduced from 30–60 minutes to under 3 minutes per story

@@ -27,14 +27,17 @@ StoryForge provides two independent generative workflows that operate on the sam
 - **Start:** Functional Lead inputs a feature description, business objective, intended user, business rules, and any known constraints
 - **End:** A structured, review-ready user story package is generated and ready for backlog entry or escalation
 
-#### Workflow 2 — Risk and Requirement Expansion
+#### Workflow 2 — Risk Signal Analysis
 
-> Take the **same feature input** and surface **edge cases, dependencies, ambiguities, and missing requirements** that could cause problems during implementation or sprint planning
+> For each generated user story, surface **edge cases and dependencies** — the two risk signal types not already captured in the story output
 
-- **Start:** Same feature description as Workflow 1 (with optional additional context)
-- **End:** A structured risk analysis that strengthens sprint readiness before development begins
+- **Start:** A saved user story (generated or manual)
+- **End:** Inline risk signals displayed within the story card: specific edge cases and external dependencies the story does not already address
+- **Entry points:** Per-story **🔬 Risk Signals** button, or bulk **🕵️ Risk Sweep** across all stories in one pass
 
-The two workflows are independent — either can be run without the other — but are designed to be used together as complementary tools in the same sprint planning session.
+Ambiguities and missing requirements are intentionally excluded — the `StoryPackage` already surfaces those via `missing_information` and `criteria_missing`. Only genuinely additive signal is returned.
+
+The two workflows are designed to be used together: generate stories with Workflow 1, then stress-test them with Workflow 2 before sprint planning.
 
 ### Business Value
 
@@ -127,24 +130,26 @@ The context-engineered system prompt (`build_improved_prompt()` in `app/prompts.
 
 ---
 
-#### Concept 2b — Workflow 2: Risk and Requirement Expansion Prompt
+#### Concept 2b — Workflow 2: Risk Signals Prompt
 
 **How it shows up:**
 
-The risk expansion prompt (`build_risk_expansion_prompt()` in `app/prompts.py`) applies the same context engineering principles as Workflow 1 with a different analytical frame:
+The risk signals prompt (`build_risk_signals_prompt()` in `app/prompts.py`) applies the same context engineering principles as Workflow 1 with a narrower, story-scoped analytical frame:
 
-1. **Role instruction:** "You are an expert QA Lead and requirements analyst specializing in specialty insurance delivery workflows." The role shift is intentional — a QA perspective generates different findings than a Business Analyst perspective on the same input.
+1. **Role instruction:** "You are an expert QA Lead specializing in specialty insurance delivery workflows." The role shift is intentional — a QA perspective generates different findings than a Business Analyst perspective on the same input.
 
-2. **Task rules:** Seven explicit behavioral constraints covering edge case identification, dependency listing, ambiguity flagging, missing requirements detection, severity assignment, and specificity requirements (findings must be specific to this feature, not general best practices).
+2. **Explicit non-duplication constraint:** The prompt is scoped to only two signal types — edge cases and dependencies — and explicitly instructs the model to return only findings not already captured in the story's acceptance criteria. Ambiguities and missing requirements are excluded because the `StoryPackage` already surfaces them via `missing_information` and `criteria_missing`.
 
-3. **Few-shot example:** Same feature as Workflow 1 (broker policy change submission), producing a full risk analysis output. This anchors the analytical depth and specificity expected for each category.
+3. **Story-level context:** The acceptance criteria of the target story are passed as prompt context so the model can reason about what is NOT covered. This is the key difference from a feature-level prompt.
 
-4. **Output schema:** Four lists plus a severity summary (`low`, `medium`, `high`), validated by the `RiskAnalysisPackage` Pydantic model. Same parse-or-reject enforcement as Workflow 1.
+4. **Output schema:** Two arrays (`edge_cases`, `dependencies`), 2–4 items each, validated by the `RiskSignalsPackage` Pydantic model. Same parse-or-reject enforcement as Workflow 1.
 
 **LLM parameters:**
-- Model: `claude-sonnet-4-6`
+- Model: `claude-haiku-4-5` — bounded structured output; speed is a UX requirement for per-story and bulk sweep use
 - Temperature: `0.3`
-- Max tokens: `2048` — sufficient for a thorough risk analysis; smaller budget than story generation because findings are shorter than full story packages
+- Max tokens: `512` — sufficient for 2–4 specific findings per category
+
+Note: `build_risk_expansion_prompt()` (full 4-category feature-level analysis) is retained in `prompts.py` and used exclusively by the evaluation harness.
 
 ---
 
@@ -256,15 +261,15 @@ User flow:
 1. User signs in and creates a project and feature
 2. Optionally enhances the feature description with AI (improves clarity before generation)
 3. **Workflow 1 — User Story Generation:**
-   - Fan-out mode: generates 3–7 atomic stories from one enhanced feature description
+   - Fan-out mode: generates 3–5 atomic stories from one enhanced feature description
    - Single-story mode: generates one story via modal with a full input form
    - Reviews: story statement, acceptance criteria (Given/When/Then), DoR status, missing information, confidence, escalation flag
    - Saves selected stories to the feature with AI source badge
-4. **Workflow 2 — Risk and Requirement Expansion:**
-   - Enters optional context (business objective, intended user, rules) and clicks Analyze Risks
-   - Reviews: overall severity, edge cases, dependencies, ambiguities, missing requirements
-   - Uses findings to strengthen the feature before sprint planning
-5. User decides: accept stories, revise inputs and regenerate, or escalate based on risk findings
+4. **Workflow 2 — Risk Signal Analysis:**
+   - Clicks 🔬 Risk Signals on any story card to analyze that story individually, or clicks 🕵️ Risk Sweep to analyze all stories at once
+   - Reviews edge cases and dependencies rendered inline within each story card
+   - Uses findings to identify hidden risks and unresolved dependencies before sprint planning
+5. User decides: accept stories, revise inputs and regenerate, or escalate based on confidence and risk signals
 
 ---
 
