@@ -92,6 +92,26 @@ def parse_baseline_output(raw: str) -> str:
     return raw.strip()
 
 
+class RiskSignalsPackage(BaseModel):
+    edge_cases: List[str]
+    dependencies: List[str]
+
+
+def parse_risk_signals_output(raw: str) -> RiskSignalsPackage | None:
+    """Parse per-story edge cases and dependencies into a RiskSignalsPackage."""
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text.strip())
+        return RiskSignalsPackage(**data)
+    except (json.JSONDecodeError, ValueError, KeyError) as e:
+        logging.error(f"Risk signals parse failed: {e}\nRaw output:\n{raw}")
+        return None
+
+
 def parse_risk_expansion_output(raw: str) -> RiskAnalysisPackage | None:
     """Parse raw model output into a validated RiskAnalysisPackage."""
     try:

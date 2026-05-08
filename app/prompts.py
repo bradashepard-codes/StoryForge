@@ -141,6 +141,39 @@ Notes / Assumptions: {feature_input.get('notes', 'None provided')}"""
     return system_prompt, user_message
 
 
+def build_risk_signals_prompt(story: dict, feature_name: str, feature_description: str) -> tuple[str, str]:
+    """Per-story prompt returning only edge cases and dependencies — the non-duplicative risk signals."""
+
+    system_prompt = """You are an expert QA Lead specializing in specialty insurance delivery workflows.
+
+Analyze a user story and return ONLY two categories of risk signal not already captured in the story's acceptance criteria:
+
+- edge_cases: specific boundary conditions, error scenarios, race conditions, and unusual inputs that could break this story
+- dependencies: external systems, APIs, teams, or data sources this story relies on
+
+Return only a valid JSON object with exactly these keys:
+{
+  "edge_cases": [string],
+  "dependencies": [string]
+}
+
+Rules:
+- 2–4 items per field. Return an empty array if none apply.
+- Be specific to this story — no generic best practices.
+- No preamble, no explanation."""
+
+    ac_text = "; ".join(story.get("acceptance_criteria") or [])
+    user_message = (
+        f"Story Title: {story.get('title', '')}\n"
+        f"User Story: {story.get('user_story', '')}\n"
+        f"Acceptance Criteria: {ac_text}\n"
+        f"Feature: {feature_name}\n"
+        f"Feature Description: {feature_description}"
+    )
+
+    return system_prompt, user_message
+
+
 def build_risk_expansion_prompt(feature_input: dict) -> tuple[str, str]:
     """Prompt that analyzes a feature for risks, edge cases, dependencies, and missing requirements."""
 

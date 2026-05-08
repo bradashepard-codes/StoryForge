@@ -1,16 +1,14 @@
 import streamlit as st
 from app.db import list_stories, save_story, update_story, delete_story, get_feature
-from app.prompts import build_improved_prompt, build_fanout_prompt, build_risk_expansion_prompt
-from app.llm_client import call_improved, call_fanout, call_risk_expansion, suggest_fanout_context
-from app.parser import parse_output, parse_fanout_output, parse_risk_expansion_output
+from app.prompts import build_improved_prompt, build_fanout_prompt, build_risk_signals_prompt
+from app.llm_client import call_improved, call_fanout, call_risk_signals, suggest_fanout_context
+from app.parser import parse_output, parse_fanout_output, parse_risk_signals_output
 
 SOURCE_BADGE = {
     "A": "⭐ AI-Generated",
     "M": "✍️ Manual",
     "E": "✏️ Edited",
 }
-
-SEVERITY_COLOR = {"high": "red", "medium": "orange", "low": "green"}
 
 
 def _story_label(story: dict) -> str:
@@ -269,71 +267,6 @@ def _edit_story_modal(story: dict):
             st.rerun()
 
 
-def _render_risk_expansion_section(feature: dict, feature_id: str):
-    risk_key = f"risk_analysis_{feature_id}"
-    analysis = st.session_state.get(risk_key)
-
-    st.divider()
-    st.markdown("#### Analyze Risks & Requirements")
-
-    if analysis is None:
-        st.caption(
-            "Surface edge cases, dependencies, ambiguities, and missing requirements "
-            "to strengthen readiness before sprint planning."
-        )
-
-        with st.form("risk_expansion_form"):
-            business_objective = st.text_input("Business Objective (optional)")
-            intended_user = st.text_input("Intended End User (optional)")
-            business_rules = st.text_area("Business Rules or Constraints (optional)", height=80)
-            notes = st.text_area("Additional Notes (optional)", height=60)
-            submitted = st.form_submit_button("🔍 Analyze Risks", use_container_width=True)
-
-        if submitted:
-            feature_input = {
-                "feature_name": feature.get("name", ""),
-                "feature_description": feature.get("description", ""),
-                "business_objective": business_objective or "Not provided",
-                "intended_user": intended_user or "Not provided",
-                "business_rules": business_rules or "None provided",
-                "notes": notes or "None provided",
-            }
-            with st.spinner("Analyzing risks and requirements..."):
-                system_prompt, user_message = build_risk_expansion_prompt(feature_input)
-                raw = call_risk_expansion(system_prompt, user_message)
-
-            if raw is None:
-                st.error("Analysis failed. Check your API key and network connection.")
-            else:
-                result = parse_risk_expansion_output(raw)
-                if result is None:
-                    st.error("Failed to parse the analysis. Try again.")
-                else:
-                    st.session_state[risk_key] = result.model_dump()
-                    st.rerun()
-    else:
-        severity = analysis.get("severity_summary", "medium")
-        color = SEVERITY_COLOR.get(severity, "orange")
-        st.markdown(f"**Overall Risk:** :{color}[{severity.capitalize()}]")
-
-        sections = [
-            ("Edge Cases", "edge_cases"),
-            ("Dependencies", "dependencies"),
-            ("Ambiguities", "ambiguities"),
-            ("Missing Requirements", "missing_requirements"),
-        ]
-        for heading, key in sections:
-            items = analysis.get(key, [])
-            if items:
-                st.markdown(f"**{heading}**")
-                for item in items:
-                    st.markdown(f"- {item}")
-
-        if st.button("Clear Analysis", key="btn_clear_risk"):
-            st.session_state.pop(risk_key, None)
-            st.rerun()
-
-
 def render_feature():
     user = st.session_state["user"]
     user_id = user.id
@@ -345,11 +278,11 @@ def render_feature():
 
     if st.button("← Back", key="back_to_project"):
         st.session_state["view"] = "project"
-        for key in [k for k in list(st.session_state.keys()) if k.startswith(("fanout_", "risk_"))]:
+        for key in [k for k in list(st.session_state.keys()) if k.startswith(("fanout_", "risk_", "run_risk_"))]:
             st.session_state.pop(key)
         st.rerun()
 
-    col_title, col_gen, col_add = st.columns([4, 2, 2])
+    col_title, col_gen, col_add, col_sweep = st.columns([3, 2, 2, 2])
     with col_title:
         st.title(feature_name)
         st.caption(f"Project: {project_name}")
@@ -362,10 +295,29 @@ def render_feature():
         st.write("")
         if st.button("✍️ Add Story Manually", use_container_width=True, key="btn_add_manual"):
             _story_modal(feature, feature_id, user_id)
+    with col_sweep:
+        st.write("")
+        if st.button("🕵️ Risk Sweep", use_container_width=True, key="btn_risk_sweep"):
+            st.session_state["run_risk_sweep"] = True
 
     st.subheader("User Stories")
 
     stories = list_stories(feature_id)
+
+    if st.session_state.pop("run_risk_sweep", False) and stories:
+        with st.spinner("Running risk sweep across all stories..."):
+            for story in stories:
+                sid = story["id"]
+                if f"risk_signals_{sid}" not in st.session_state:
+                    sp, um = build_risk_signals_prompt(
+                        story, feature.get("name", ""), feature.get("description", "")
+                    )
+                    raw = call_risk_signals(sp, um)
+                    if raw:
+                        result = parse_risk_signals_output(raw)
+                        if result:
+                            st.session_state[f"risk_signals_{sid}"] = result.model_dump()
+        st.rerun()
 
     if stories:
         for story in stories:
@@ -411,10 +363,40 @@ def render_feature():
                 if escalation:
                     st.warning("Escalation recommended — review before sprint entry.")
 
-                col_edit, col_delete = st.columns([1, 1])
+                signals = st.session_state.get(f"risk_signals_{story['id']}")
+                if signals:
+                    st.divider()
+                    st.markdown("**Risk Signals**")
+                    edge_cases = signals.get("edge_cases", [])
+                    dependencies = signals.get("dependencies", [])
+                    if edge_cases:
+                        st.markdown("**Edge Cases**")
+                        for item in edge_cases:
+                            st.markdown(f"- {item}")
+                    if dependencies:
+                        st.markdown("**Dependencies**")
+                        for item in dependencies:
+                            st.markdown(f"- {item}")
+                    if st.button("Clear Signals", key=f"clear_signals_{story['id']}"):
+                        st.session_state.pop(f"risk_signals_{story['id']}", None)
+                        st.rerun()
+
+                col_edit, col_risk, col_delete = st.columns([1, 1, 1])
                 with col_edit:
                     if st.button("Edit Story", key=f"edit_story_{story['id']}"):
                         _edit_story_modal(story)
+                with col_risk:
+                    if st.button("🔬 Risk Signals", key=f"risk_btn_{story['id']}"):
+                        with st.spinner("Analyzing..."):
+                            sp, um = build_risk_signals_prompt(
+                                story, feature.get("name", ""), feature.get("description", "")
+                            )
+                            raw = call_risk_signals(sp, um)
+                        if raw:
+                            result = parse_risk_signals_output(raw)
+                            if result:
+                                st.session_state[f"risk_signals_{story['id']}"] = result.model_dump()
+                        st.rerun()
                 with col_delete:
                     if st.button("Delete Story", key=f"del_story_{story['id']}"):
                         delete_story(story["id"])
@@ -423,4 +405,3 @@ def render_feature():
         st.info("No stories yet. Use the buttons above to get started.")
 
     _render_fanout_preview(feature_id, user_id)
-    _render_risk_expansion_section(feature, feature_id)

@@ -87,7 +87,7 @@ def _add_feature_modal(project_id: str, user_id: str):
     intended_user = st.text_input("Intended End User (optional)")
 
     final_desc, final_biz, final_iu, enhanced_choice = _render_enhance_section(
-        description, biz_obj, intended_user,
+        description or "", biz_obj or "", intended_user or "",
         enhanced_key="modal_add_enhanced",
         choice_key="modal_add_choice",
     )
@@ -125,7 +125,7 @@ def _edit_feature_modal(feature: dict):
     new_iu = st.text_input("Intended End User (optional)", value=feature.get("intended_user", ""))
 
     final_desc, final_biz, final_iu, enhanced_choice = _render_enhance_section(
-        new_desc, new_biz, new_iu,
+        new_desc or "", new_biz or "", new_iu or "",
         enhanced_key="modal_edit_enhanced",
         choice_key="modal_edit_choice",
     )
