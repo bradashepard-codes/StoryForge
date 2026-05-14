@@ -269,6 +269,12 @@ StoryForge/
 
 ---
 
+## Presentation
+
+[View Final Presentation (PowerPoint)](https://livejohnshopkins-my.sharepoint.com/:p:/g/personal/jdunlao1_jh_edu1/IQB8QmVUl56uQIhnrXmG_Bb3ATMEWn1E8ZTrkoGrPGmcmBA?e=Wc56jO)
+
+---
+
 ## Project Team
 
 | Role | Contributor |
