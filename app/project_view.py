@@ -25,17 +25,17 @@ def _render_enhance_section(
     )
 
     if clicked:
-        with st.spinner("Enhancing feature..."):
-            result = enhance_feature(current_desc, current_biz, current_iu)
-        if result:
+        try:
+            with st.spinner("Enhancing feature..."):
+                result = enhance_feature(current_desc, current_biz, current_iu)
             st.session_state[enhanced_key] = result
             st.session_state[f"{enhanced_key}_orig"] = {
                 "description": current_desc,
                 "business_objective": current_biz,
                 "intended_user": current_iu,
             }
-        else:
-            st.error("Enhancement failed. Check your API key.")
+        except Exception as e:
+            st.error(f"Enhancement failed: {type(e).__name__}: {e}")
 
     enhanced = st.session_state.get(enhanced_key)
 

@@ -71,8 +71,8 @@ def enhance_feature(description: str, business_objective: str = "", intended_use
                 raw = raw[4:]
         return _json.loads(raw.strip())
     except Exception as e:
-        print(f"[llm_client] enhance_feature failed: {e}")
-        return None
+        print(f"[llm_client] enhance_feature failed: {type(e).__name__}: {e}")
+        raise
 
 
 def suggest_fanout_context(feature_name: str, feature_description: str) -> dict | None:
